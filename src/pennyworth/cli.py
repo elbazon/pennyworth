@@ -1,7 +1,7 @@
 """The Pennyworth command line — ``alfred``.
 
-Minimal for now: manage knowledge packs and render the assembled brain. Driving
-a live coding agent with that prompt is a later increment.
+Manage knowledge packs, render the assembled brain, and run a host coding agent
+as Alfred. A bare ``alfred "<request>"`` is shorthand for ``alfred run``.
 """
 
 from __future__ import annotations
@@ -11,7 +11,11 @@ import sys
 
 from pennyworth import __version__
 from pennyworth import packs as _packs
+from pennyworth import runner as _runner
 from pennyworth.prompt import build_system_prompt
+
+# Subcommands recognised before the bare-request shorthand kicks in.
+_COMMANDS = {"pack", "prompt", "run", "chat"}
 
 
 def _cmd_pack_list(_args: argparse.Namespace) -> int:
@@ -45,6 +49,41 @@ def _cmd_prompt(_args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_run(args: argparse.Namespace) -> int:
+    return _runner.run(
+        " ".join(args.request),
+        _packs.active_pack(),
+        add_dirs=args.add_dirs,
+        allow_all=args.allow_all,
+    )
+
+
+def _cmd_chat(args: argparse.Namespace) -> int:
+    return _runner.run(
+        " ".join(args.request),
+        _packs.active_pack(),
+        interactive=True,
+        add_dirs=args.add_dirs,
+        allow_all=args.allow_all,
+    )
+
+
+def _add_agent_args(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument(
+        "--dir",
+        action="append",
+        dest="add_dirs",
+        metavar="PATH",
+        help="extra workspace directory the agent may access (repeatable)",
+    )
+    parser.add_argument(
+        "--dangerously-allow-all",
+        action="store_true",
+        dest="allow_all",
+        help="skip the host agent's permission prompts (use with care)",
+    )
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="alfred",
@@ -60,9 +99,7 @@ def build_parser() -> argparse.ArgumentParser:
     pack_sub.add_parser("list", help="list installed packs").set_defaults(
         func=_cmd_pack_list
     )
-    attach = pack_sub.add_parser(
-        "attach", help="install and activate a pack directory"
-    )
+    attach = pack_sub.add_parser("attach", help="install and activate a pack directory")
     attach.add_argument("path", help="path to a directory containing a pack manifest")
     attach.set_defaults(func=_cmd_pack_attach)
     pack_sub.add_parser("detach", help="detach the active pack").set_defaults(
@@ -72,10 +109,26 @@ def build_parser() -> argparse.ArgumentParser:
     sub.add_parser(
         "prompt", help="print the assembled system prompt for the active pack"
     ).set_defaults(func=_cmd_prompt)
+
+    run = sub.add_parser("run", help="run a one-shot request as Alfred")
+    run.add_argument("request", nargs="+", help="the request")
+    _add_agent_args(run)
+    run.set_defaults(func=_cmd_run)
+
+    chat = sub.add_parser("chat", help="start an interactive Alfred session")
+    chat.add_argument("request", nargs="*", help="optional opening message")
+    _add_agent_args(chat)
+    chat.set_defaults(func=_cmd_chat)
+
     return parser
 
 
 def main(argv: list[str] | None = None) -> int:
+    argv = list(sys.argv[1:] if argv is None else argv)
+    # Bare-request shorthand: `alfred "fix the bug"` -> `alfred run fix the bug`.
+    if argv and not argv[0].startswith("-") and argv[0] not in _COMMANDS:
+        argv = ["run", *argv]
+
     parser = build_parser()
     args = parser.parse_args(argv)
     func = getattr(args, "func", None)

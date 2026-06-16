@@ -22,9 +22,28 @@ pack and he becomes fluent in *your* codebase, your team, and your tooling.
 The core never depends on any pack, and a pack can carry private content for its own
 platform. See [`docs/architecture.md`](docs/architecture.md) for the design.
 
+## Quickstart
+
+Pennyworth drives a host coding agent (the Claude Code CLI, `claude`, by default)
+with Alfred's assembled prompt.
+
+```bash
+alfred run "explain this repo"     # one-shot request, answered as Alfred
+alfred chat                        # interactive session
+alfred prompt                      # print the assembled system prompt
+
+alfred pack attach examples/acme   # teach Alfred a platform
+alfred pack list
+alfred pack detach                 # back to the generic butler
+```
+
+Set `PENNYWORTH_AGENT` to point at a different agent CLI. Packs install under
+`PENNYWORTH_HOME` (default `~/.pennyworth`).
+
 ## Status
 
-Early. The core and the pack contract are under construction — see the architecture doc for
+Early but runnable: the persona, the pack mechanism, and the agent runner work
+end to end. The pack contract grows seam by seam — see the architecture doc for
 the roadmap.
 
 ## License
