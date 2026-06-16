@@ -121,3 +121,74 @@ def test_stream_parses_claude_stream_json(tmp_path, monkeypatch):
     assert runner.stream("hi", on_chunk=chunks.append) == 0
     # Only the two text deltas are surfaced — envelopes are dropped.
     assert "".join(chunks) == "Good day, sir."
+
+
+def test_parse_stream_event_classifies_each_kind():
+    def ev(line):
+        return runner.parse_stream_event(line)
+
+    assert ev(
+        '{"type":"stream_event","event":{"type":"message_start",'
+        '"message":{"model":"claude-opus-4-8"}}}'
+    ) == {"kind": "model", "model": "claude-opus-4-8"}
+    assert ev(
+        '{"type":"stream_event","event":{"type":"content_block_delta",'
+        '"delta":{"type":"text_delta","text":"hi"}}}'
+    ) == {"kind": "text", "text": "hi"}
+    assert ev(
+        '{"type":"stream_event","event":{"type":"content_block_delta",'
+        '"delta":{"type":"thinking_delta","thinking":"hmm"}}}'
+    ) == {"kind": "thinking", "text": "hmm"}
+    assert ev(
+        '{"type":"stream_event","event":{"type":"content_block_start",'
+        '"content_block":{"type":"tool_use","name":"Bash","id":"t1"}}}'
+    ) == {"kind": "tool", "name": "Bash", "id": "t1"}
+    assert ev('{"type":"result","is_error":false,"total_cost_usd":0.0123}') == {
+        "kind": "result",
+        "cost": 0.0123,
+        "error": False,
+    }
+
+
+def test_parse_stream_event_ignores_noise():
+    assert runner.parse_stream_event('{"type":"system","subtype":"init"}') is None
+    # a text content_block_start is not a tool call
+    assert (
+        runner.parse_stream_event(
+            '{"type":"stream_event","event":{"type":"content_block_start",'
+            '"content_block":{"type":"text","text":""}}}'
+        )
+        is None
+    )
+    assert runner.parse_stream_event("not json") is None
+    assert runner.parse_stream_event("") is None
+
+
+def test_stream_events_collects_structured_events(tmp_path, monkeypatch):
+    ndjson = tmp_path / "events.ndjson"
+    ndjson.write_text(
+        '{"type":"stream_event","event":{"type":"message_start",'
+        '"message":{"model":"claude-opus-4-8"}}}\n'
+        '{"type":"stream_event","event":{"type":"content_block_delta",'
+        '"delta":{"type":"thinking_delta","thinking":"let me see"}}}\n'
+        '{"type":"stream_event","event":{"type":"content_block_start",'
+        '"content_block":{"type":"tool_use","name":"Read","id":"t1"}}}\n'
+        '{"type":"stream_event","event":{"type":"content_block_delta",'
+        '"delta":{"type":"text_delta","text":"Done, sir."}}}\n'
+        '{"type":"result","is_error":false,"total_cost_usd":0.05}\n'
+    )
+    bindir = tmp_path / "bin"
+    bindir.mkdir()
+    stub = bindir / "claude"
+    stub.write_text(f'#!/bin/sh\ncat "{ndjson}"\n')
+    stub.chmod(0o755)
+    monkeypatch.setenv("PENNYWORTH_AGENT", str(stub))
+
+    events: list[dict] = []
+    assert runner.stream_events("hi", on_event=events.append) == 0
+    kinds = [e["kind"] for e in events]
+    assert kinds == ["model", "thinking", "tool", "text", "result"]
+    assert events[0]["model"] == "claude-opus-4-8"
+    assert events[2]["name"] == "Read"
+    assert events[3]["text"] == "Done, sir."
+    assert events[4]["cost"] == 0.05

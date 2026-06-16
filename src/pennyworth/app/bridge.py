@@ -10,8 +10,11 @@ that path is unreliable. The request/response shape is simpler and robust.
 from __future__ import annotations
 
 import itertools
+import json
 import threading
+import time
 from collections.abc import Callable
+from pathlib import Path
 
 from pennyworth import packs as _packs
 from pennyworth import profile as _profile
@@ -40,6 +43,42 @@ def _compose(messages: list[dict]) -> str:
         lines.append(f"{who}: {message.get('text', '')}")
     lines += ["", "Now respond, in character, to the user's latest message:", latest]
     return "\n".join(lines)
+
+
+def _new_turn() -> dict:
+    """A fresh in-flight turn buffer for the rich streaming snapshot."""
+    return {
+        "text": [],
+        "thinking": [],
+        "steps": [],
+        "cost": None,
+        "model": None,
+        "done": False,
+        "ok": False,
+    }
+
+
+def _turn_snapshot(turn: dict | None) -> dict:
+    """The poll payload for ``turn`` (or an empty, done payload for ``None``)."""
+    if turn is None:
+        return {
+            "ok": False,
+            "done": True,
+            "text": "",
+            "thinking": "",
+            "steps": [],
+            "cost": None,
+            "model": None,
+        }
+    return {
+        "ok": turn["ok"],
+        "done": turn["done"],
+        "text": "".join(turn["text"]),
+        "thinking": "".join(turn["thinking"]),
+        "steps": list(turn["steps"]),
+        "cost": turn["cost"],
+        "model": turn["model"],
+    }
 
 
 class Bridge:
@@ -107,7 +146,7 @@ class Bridge:
         if not request:
             return {"ok": False, "id": None}
         turn_id = f"t{next(self._ids)}"
-        turn = {"chunks": [], "done": False, "ok": False}
+        turn = _new_turn()
         with self._lock:
             self._turns[turn_id] = turn
         worker = threading.Thread(
@@ -117,41 +156,135 @@ class Bridge:
         return {"ok": True, "id": turn_id}
 
     def _run_turn(self, turn: dict, request: str) -> None:
-        """Drive one streaming turn on a worker thread into ``turn``'s buffer."""
+        """Drive one streaming turn on a worker thread into ``turn``'s buffer.
 
-        def on_chunk(text: str) -> None:
+        Accumulates the structured event stream — visible text, extended
+        thinking, tool activity, the model, and the final cost — so :meth:`poll`
+        can render a rich snapshot, not just plain text.
+        """
+
+        def on_event(event: dict) -> None:
+            kind = event.get("kind")
             with self._lock:
-                turn["chunks"].append(text)
+                if kind in ("text", "error"):
+                    turn["text"].append(event.get("text", ""))
+                elif kind == "thinking":
+                    turn["thinking"].append(event.get("text", ""))
+                elif kind == "tool":
+                    turn["steps"].append(event.get("name", "tool"))
+                elif kind == "model":
+                    turn["model"] = event.get("model")
+                elif kind == "result" and event.get("cost") is not None:
+                    turn["cost"] = event.get("cost")
 
         try:
-            code = _runner.stream(
+            code = _runner.stream_events(
                 request,
                 self._pack_provider(),
-                on_chunk=on_chunk,
+                on_event=on_event,
                 profile=self._profile_provider(),
             )
             ok = code == 0
         except Exception as exc:  # never let a worker thread die silently
             with self._lock:
-                turn["chunks"].append(f"Error: {exc}")
+                turn["text"].append(f"Error: {exc}")
             ok = False
         with self._lock:
             turn["ok"] = ok
             turn["done"] = True
 
     def poll(self, turn_id: str) -> dict:
-        """Return the reply accumulated so far for ``turn_id``.
+        """Return the rich snapshot of ``turn_id`` accumulated so far.
 
-        ``{"ok", "done", "text"}``. When ``done`` is true the turn has finished
-        and is forgotten after this call, so poll until ``done`` then stop.
+        ``{"ok", "done", "text", "thinking", "steps", "cost", "model"}``. When
+        ``done`` is true the turn has finished and is forgotten after this call,
+        so poll until ``done`` then stop.
         """
         with self._lock:
             turn = self._turns.get(turn_id)
             if turn is None:
-                return {"ok": False, "done": True, "text": ""}
-            text = "".join(turn["chunks"])
-            done = turn["done"]
-            ok = turn["ok"]
-            if done:
+                return _turn_snapshot(None)
+            snapshot = _turn_snapshot(turn)
+            if turn["done"]:
                 self._turns.pop(turn_id, None)
-        return {"ok": ok, "done": done, "text": text}
+        return snapshot
+
+    # --- persisted GUI chats (survive a restart) ---
+
+    def _chats_dir(self) -> Path:
+        return _packs.home() / "app" / "chats"
+
+    @staticmethod
+    def _safe_id(chat_id: str) -> str:
+        kept = "".join(ch for ch in str(chat_id) if ch.isalnum() or ch in "-_")
+        return kept or "chat"
+
+    def persist_chat(self, chat_id: str, chat: dict) -> dict:
+        """Write a chat snapshot to disk. ``chat`` carries title/messages/cost."""
+        chat = chat or {}
+        try:
+            directory = self._chats_dir()
+            directory.mkdir(parents=True, exist_ok=True)
+            doc = {
+                "id": str(chat_id),
+                "title": str(chat.get("title") or "Chat"),
+                "messages": chat.get("messages") or [],
+                "cost": chat.get("cost"),
+                "updated": time.time(),
+            }
+            (directory / f"{self._safe_id(chat_id)}.json").write_text(json.dumps(doc))
+            return {"ok": True}
+        except OSError as exc:
+            return {"ok": False, "error": str(exc)}
+
+    def list_app_chats(self) -> list[dict]:
+        """Stored chats, newest first (max 25), as lightweight index rows."""
+        directory = self._chats_dir()
+        if not directory.is_dir():
+            return []
+        rows: list[dict] = []
+        for path in directory.glob("*.json"):
+            try:
+                doc = json.loads(path.read_text())
+            except (OSError, ValueError):
+                continue
+            messages = doc.get("messages") or []
+            rows.append(
+                {
+                    "id": doc.get("id") or path.stem,
+                    "title": doc.get("title") or "Chat",
+                    "updated": doc.get("updated") or 0,
+                    "turns": sum(1 for m in messages if m.get("role") == "user"),
+                    "cost": doc.get("cost"),
+                }
+            )
+        rows.sort(key=lambda row: row["updated"], reverse=True)
+        return rows[:25]
+
+    def load_app_chat(self, chat_id: str) -> dict:
+        """The full stored transcript for ``chat_id``, or ``{"error": ...}``."""
+        path = self._chats_dir() / f"{self._safe_id(chat_id)}.json"
+        if not path.is_file():
+            return {"error": "not found"}
+        try:
+            return json.loads(path.read_text())
+        except (OSError, ValueError) as exc:
+            return {"error": str(exc)}
+
+    def rename_app_chat(self, chat_id: str, title: str) -> dict:
+        """Rename a stored chat in place."""
+        doc = self.load_app_chat(chat_id)
+        if doc.get("error"):
+            return {"ok": False, "error": doc["error"]}
+        doc["title"] = str(title or "Chat")
+        return self.persist_chat(chat_id, doc)
+
+    def delete_app_chat(self, chat_id: str) -> dict:
+        """Delete a stored chat."""
+        path = self._chats_dir() / f"{self._safe_id(chat_id)}.json"
+        try:
+            if path.is_file():
+                path.unlink()
+            return {"ok": True}
+        except OSError as exc:
+            return {"ok": False, "error": str(exc)}

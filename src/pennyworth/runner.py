@@ -78,6 +78,67 @@ def extract_text_delta(line: str) -> str | None:
     return text if isinstance(text, str) else None
 
 
+def parse_stream_event(line: str) -> dict | None:
+    """Parse one Claude stream-json line into a structured UI event.
+
+    Returns one of these dicts, or ``None`` for lines that carry nothing the UI
+    renders (envelopes, tool-input deltas, the redundant full ``assistant``
+    message):
+
+    - ``{"kind": "model", "model": str}`` — the model answering this turn.
+    - ``{"kind": "text", "text": str}`` — a visible reply fragment.
+    - ``{"kind": "thinking", "text": str}`` — an extended-thinking fragment.
+    - ``{"kind": "tool", "name": str, "id": str}`` — a tool call began.
+    - ``{"kind": "result", "cost": float | None, "error": bool}`` — turn done.
+
+    Pure and testable.
+    """
+    line = line.strip()
+    if not line:
+        return None
+    try:
+        obj = json.loads(line)
+    except (ValueError, TypeError):
+        return None
+    if not isinstance(obj, dict):
+        return None
+    kind = obj.get("type")
+    if kind == "result":
+        cost = obj.get("total_cost_usd")
+        return {
+            "kind": "result",
+            "cost": cost if isinstance(cost, int | float) else None,
+            "error": bool(obj.get("is_error")),
+        }
+    if kind != "stream_event":
+        return None
+    event = obj.get("event")
+    if not isinstance(event, dict):
+        return None
+    etype = event.get("type")
+    if etype == "message_start":
+        model = (event.get("message") or {}).get("model")
+        return {"kind": "model", "model": model} if isinstance(model, str) else None
+    if etype == "content_block_start":
+        block = event.get("content_block") or {}
+        if block.get("type") == "tool_use":
+            return {
+                "kind": "tool",
+                "name": str(block.get("name") or "tool"),
+                "id": str(block.get("id") or ""),
+            }
+        return None
+    if etype == "content_block_delta":
+        delta = event.get("delta") or {}
+        dtype = delta.get("type")
+        if dtype == "text_delta" and isinstance(delta.get("text"), str):
+            return {"kind": "text", "text": delta["text"]}
+        if dtype == "thinking_delta" and isinstance(delta.get("thinking"), str):
+            return {"kind": "thinking", "text": delta["thinking"]}
+        return None
+    return None
+
+
 def build_command(
     request: str,
     system_prompt: str,
@@ -144,22 +205,24 @@ def run(
         return 127
 
 
-def stream(
+def stream_events(
     request: str,
     pack: Pack = NULL_PACK,
     *,
-    on_chunk: Callable[[str], None],
+    on_event: Callable[[dict], None],
     add_dirs: list[str] | None = None,
     allow_all: bool = False,
     profile: Profile = NULL_PROFILE,
 ) -> int:
-    """Run the host agent and deliver its reply incrementally via ``on_chunk``.
+    """Run the host agent and deliver structured events via ``on_event``.
 
-    Used by the desktop app to render a reply as it arrives. With the default
-    Claude CLI the reply streams token-by-token (stream-json text deltas); with
-    a custom ``PENNYWORTH_AGENT`` it falls back to plain line streaming (stderr
-    folded into stdout). Returns the agent's exit code, or 127 if the agent
-    executable is missing.
+    The richer sibling of :func:`stream`: each call to ``on_event`` is one of the
+    dicts described by :func:`parse_stream_event` (``text`` / ``thinking`` /
+    ``tool`` / ``model`` / ``result``), plus ``{"kind": "error", "text": str}``
+    for failures. With the default Claude CLI this gives token-by-token text, the
+    extended-thinking stream, and tool activity; a custom ``PENNYWORTH_AGENT``
+    falls back to whole-line ``text`` events. Returns the agent's exit code, or
+    127 if the agent executable is missing.
     """
     system_prompt = build_system_prompt(pack, chat_mode=False, profile=profile)
     agent = agent_command()
@@ -180,18 +243,54 @@ def stream(
             text=True,
         )
     except FileNotFoundError:
-        on_chunk(f"[host agent not found: {cmd[0]} — set PENNYWORTH_AGENT]")
+        on_event(
+            {
+                "kind": "error",
+                "text": f"[host agent not found: {cmd[0]} — set PENNYWORTH_AGENT]",
+            }
+        )
         return 127
     assert proc.stdout is not None
     for line in proc.stdout:
         if not structured:
-            on_chunk(line)
+            if line.strip():
+                on_event({"kind": "text", "text": line})
             continue
-        text = extract_text_delta(line)
-        if text is not None:
-            on_chunk(text)
+        event = parse_stream_event(line)
+        if event is not None:
+            on_event(event)
         elif line.strip() and not line.lstrip().startswith(("{", "[")):
             # A plain-text line in structured mode is almost certainly an error
             # the CLI printed instead of a JSON event — surface it, don't swallow.
-            on_chunk(line)
+            on_event({"kind": "error", "text": line})
     return proc.wait()
+
+
+def stream(
+    request: str,
+    pack: Pack = NULL_PACK,
+    *,
+    on_chunk: Callable[[str], None],
+    add_dirs: list[str] | None = None,
+    allow_all: bool = False,
+    profile: Profile = NULL_PROFILE,
+) -> int:
+    """Run the host agent and deliver visible reply text via ``on_chunk``.
+
+    A thin text-only view over :func:`stream_events` — ``text`` and ``error``
+    events become chunks; ``thinking`` / ``tool`` / ``model`` / ``result`` are
+    dropped. Returns the agent's exit code.
+    """
+
+    def on_event(event: dict) -> None:
+        if event.get("kind") in ("text", "error"):
+            on_chunk(event.get("text", ""))
+
+    return stream_events(
+        request,
+        pack,
+        on_event=on_event,
+        add_dirs=add_dirs,
+        allow_all=allow_all,
+        profile=profile,
+    )

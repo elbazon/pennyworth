@@ -16,6 +16,18 @@ def _bridge():
     )
 
 
+# The poll snapshot for a finished/unknown turn.
+_EMPTY_TURN = {
+    "ok": False,
+    "done": True,
+    "text": "",
+    "thinking": "",
+    "steps": [],
+    "cost": None,
+    "model": None,
+}
+
+
 def test_bridge_get_state():
     bridge = Bridge(pack_provider=lambda: NULL_PACK)
     assert bridge.get_state() == {
@@ -78,8 +90,10 @@ def test_bridge_start_and_poll_stream_reply(tmp_path, monkeypatch):
     final = _drain(bridge, started["id"])
     assert final["ok"] is True
     assert "streamed-reply" in final["text"]
+    # Rich snapshot carries the structured fields too.
+    assert set(final) >= {"text", "thinking", "steps", "cost", "model"}
     # The turn is forgotten once done — a second poll finds nothing.
-    assert bridge.poll(started["id"]) == {"ok": False, "done": True, "text": ""}
+    assert bridge.poll(started["id"]) == _EMPTY_TURN
 
 
 def test_bridge_start_handles_empty():
@@ -89,8 +103,51 @@ def test_bridge_start_handles_empty():
 
 
 def test_bridge_poll_unknown_turn():
-    result = Bridge(pack_provider=lambda: NULL_PACK).poll("no-such-turn")
-    assert result == {"ok": False, "done": True, "text": ""}
+    assert _bridge().poll("no-such-turn") == _EMPTY_TURN
+
+
+# --- persisted GUI chats ---
+
+
+def test_persist_list_load_rename_delete_chats(tmp_path, monkeypatch):
+    monkeypatch.setenv("PENNYWORTH_HOME", str(tmp_path))
+    bridge = _bridge()
+
+    assert bridge.list_app_chats() == []
+    chat = {
+        "title": "Fix the bug",
+        "messages": [
+            {"role": "user", "text": "hi"},
+            {"role": "alfred", "text": "Good day, sir."},
+        ],
+        "cost": 0.02,
+    }
+    assert bridge.persist_chat("c1", chat)["ok"] is True
+
+    rows = bridge.list_app_chats()
+    assert len(rows) == 1
+    assert rows[0]["title"] == "Fix the bug"
+    assert rows[0]["turns"] == 1  # one user message
+
+    loaded = bridge.load_app_chat("c1")
+    assert loaded["messages"][1]["text"] == "Good day, sir."
+
+    assert bridge.rename_app_chat("c1", "Renamed")["ok"] is True
+    assert bridge.load_app_chat("c1")["title"] == "Renamed"
+
+    assert bridge.delete_app_chat("c1")["ok"] is True
+    assert bridge.list_app_chats() == []
+    assert bridge.load_app_chat("c1")["error"] == "not found"
+
+
+def test_chat_id_is_sanitized_against_traversal(tmp_path, monkeypatch):
+    monkeypatch.setenv("PENNYWORTH_HOME", str(tmp_path))
+    bridge = _bridge()
+    bridge.persist_chat("../../evil", {"title": "x", "messages": []})
+    # Nothing escaped the chats directory.
+    assert not (tmp_path / "evil.json").exists()
+    files = list((tmp_path / "app" / "chats").glob("*.json"))
+    assert len(files) == 1
 
 
 def test_compose_single_turn_is_just_the_text():
