@@ -7,6 +7,10 @@ license = "Apache-2.0"
 readme = "README.md"
 packages = [{ include = "pennyworth", from = "src" }]
 
+[tool.poetry.scripts]
+alfred = "pennyworth.cli:main"
+pennyworth = "pennyworth.cli:main"
+
 [tool.poetry.dependencies]
 python = "^3.11"
 

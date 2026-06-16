@@ -1,0 +1,8 @@
+# An example pack. Attach it to see the generic butler become a platform expert:
+#   alfred pack attach examples/acme
+#   alfred prompt
+[pack]
+name = "acme"
+platform_name = "the Acme platform"
+platform_blurb = "A Python + React monorepo with a REST API and a Postgres store."
+principal_file = "principal.md"
