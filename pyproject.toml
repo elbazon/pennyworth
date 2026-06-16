@@ -1,0 +1,27 @@
+[tool.poetry]
+name = "pennyworth"
+version = "0.0.1"
+description = "Alfred — a dignified butler-engineer AI companion. The open-source core."
+authors = ["Haim Elbaz <haim@morning.co>"]
+license = "Apache-2.0"
+readme = "README.md"
+packages = [{ include = "pennyworth", from = "src" }]
+
+[tool.poetry.dependencies]
+python = "^3.11"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.0"
+ruff = "^0.6"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
+
+[tool.ruff.lint]
+select = ["F", "E", "W", "UP", "B", "I"]
+ignore = ["E501"]
