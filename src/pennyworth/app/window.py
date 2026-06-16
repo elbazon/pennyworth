@@ -25,10 +25,12 @@ def index_path() -> Path:
 
 
 def window_config() -> dict:
-    """pywebview ``create_window`` kwargs. Pure, so it can be tested without a GUI."""
+    """pywebview ``create_window`` kwargs (excluding the page content itself).
+
+    Pure, so it can be tested without a GUI.
+    """
     return {
         "title": WINDOW_TITLE,
-        "url": str(index_path()),
         "width": 1040,
         "height": 720,
         "min_size": (640, 480),
@@ -54,7 +56,10 @@ def main() -> int:
         print(f"UI asset missing: {index_path()}", file=sys.stderr)
         return 1
 
-    webview.create_window(js_api=Bridge(), **window_config())
+    # The page is fully self-contained (all CSS/JS inline), so load its markup
+    # directly rather than via a file URL — no scheme/cache/path pitfalls.
+    html = index_path().read_text()
+    webview.create_window(html=html, js_api=Bridge(), **window_config())
     webview.start()
     return 0
 

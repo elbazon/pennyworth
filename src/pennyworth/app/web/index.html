@@ -7,6 +7,7 @@
 <style>
   :root {
     --bg: #262624;
+    --side: #1f1e1c;
     --panel: #2f2f2c;
     --ink: #ece9e3;
     --muted: #9a958c;
@@ -14,124 +15,161 @@
     --user: #36352f;
     --line: #403f3a;
     --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   }
   * { box-sizing: border-box; }
   html, body { height: 100%; margin: 0; }
-  body {
-    background: var(--bg); color: var(--ink); font-family: var(--sans);
-    display: flex; flex-direction: column; font-size: 15px; line-height: 1.55;
-  }
-  header {
-    display: flex; align-items: center; gap: 10px;
-    padding: 14px 20px; border-bottom: 1px solid var(--line);
-  }
-  .hat { font-size: 20px; }
-  .title { font-weight: 600; letter-spacing: .2px; }
-  .sub { color: var(--muted); font-size: 12.5px; margin-left: auto; }
+  body { background: var(--bg); color: var(--ink); font-family: var(--sans); font-size: 15px; }
+  .app { display: flex; height: 100%; }
+
+  /* Sidebar */
+  .sidebar { width: 240px; min-width: 240px; background: var(--side); border-right: 1px solid var(--line); display: flex; flex-direction: column; }
+  .brand { display: flex; align-items: center; gap: 9px; padding: 15px 16px; border-bottom: 1px solid var(--line); }
+  .brand .hat { font-size: 19px; }
+  .brand .title { font-weight: 600; }
+  .brand .pack { color: var(--muted); font-size: 11.5px; margin-left: auto; }
+  .newchat { margin: 12px; padding: 9px 12px; border: 1px solid var(--line); border-radius: 9px; background: transparent; color: var(--ink); cursor: pointer; font-family: var(--sans); font-size: 14px; }
+  .newchat:hover { border-color: var(--accent); }
+  .chats { flex: 1; overflow-y: auto; padding: 0 8px 12px; }
+  .chatitem { padding: 9px 10px; border-radius: 8px; cursor: pointer; color: var(--muted); font-size: 13.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .chatitem:hover { background: #2a2926; }
+  .chatitem.active { background: #2f2e2a; color: var(--ink); }
+
+  /* Main */
+  .main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
   main { flex: 1; overflow-y: auto; padding: 22px 0; }
-  .wrap { max-width: 780px; margin: 0 auto; padding: 0 20px; }
+  .wrap { max-width: 760px; margin: 0 auto; padding: 0 22px; }
   .msg { margin: 0 0 18px; display: flex; }
-  .msg .bubble {
-    padding: 11px 14px; border-radius: 12px; white-space: pre-wrap;
-    word-wrap: break-word; overflow-wrap: anywhere; max-width: 86%;
-  }
+  .msg .bubble { padding: 11px 14px; border-radius: 12px; white-space: pre-wrap; word-wrap: break-word; overflow-wrap: anywhere; max-width: 88%; }
   .msg.user { justify-content: flex-end; }
   .msg.user .bubble { background: var(--user); }
   .msg.alfred .bubble { background: var(--panel); border: 1px solid var(--line); }
   .msg .who { font-size: 11px; color: var(--muted); margin: 0 0 4px; }
   .msg.alfred .who { color: var(--accent); }
   .msg .body.err { color: #e0846a; }
-  .empty { color: var(--muted); text-align: center; margin-top: 12vh; }
+  .empty { color: var(--muted); text-align: center; margin-top: 14vh; }
   .empty .big { font-size: 30px; margin-bottom: 8px; }
+
   footer { border-top: 1px solid var(--line); padding: 14px 0; }
-  .composer { max-width: 780px; margin: 0 auto; padding: 0 20px; display: flex; gap: 10px; }
-  textarea {
-    flex: 1; resize: none; background: var(--panel); color: var(--ink);
-    border: 1px solid var(--line); border-radius: 10px; padding: 11px 13px;
-    font-family: var(--sans); font-size: 15px; line-height: 1.5; max-height: 200px;
-  }
+  .composer { max-width: 760px; margin: 0 auto; padding: 0 22px; display: flex; gap: 10px; }
+  textarea { flex: 1; resize: none; background: var(--panel); color: var(--ink); border: 1px solid var(--line); border-radius: 10px; padding: 11px 13px; font-family: var(--sans); font-size: 15px; line-height: 1.5; max-height: 200px; }
   textarea:focus { outline: none; border-color: var(--accent); }
-  button {
-    background: var(--accent); color: #21201d; border: 0; border-radius: 10px;
-    padding: 0 18px; font-weight: 600; cursor: pointer; font-family: var(--sans);
-  }
-  button:disabled { opacity: .5; cursor: default; }
+  button.send { background: var(--accent); color: #21201d; border: 0; border-radius: 10px; padding: 0 18px; font-weight: 600; cursor: pointer; font-family: var(--sans); }
+  button.send:disabled { opacity: .5; cursor: default; }
 </style>
 </head>
 <body>
-  <header>
-    <span class="hat">🎩</span>
-    <span class="title">Alfred</span>
-    <span class="sub" id="sub">starting…</span>
-  </header>
-  <main id="main">
-    <div class="wrap" id="messages">
-      <div class="empty" id="empty">
-        <div class="big">🎩</div>
-        <div>Good day. How may I be of service?</div>
+  <div class="app">
+    <aside class="sidebar">
+      <div class="brand">
+        <span class="hat">🎩</span><span class="title">Alfred</span>
+        <span class="pack" id="pack">…</span>
       </div>
+      <button class="newchat" id="newchat">+ New chat</button>
+      <div class="chats" id="chats"></div>
+    </aside>
+    <div class="main">
+      <main id="main"><div class="wrap" id="messages"></div></main>
+      <footer>
+        <div class="composer">
+          <textarea id="input" rows="1" placeholder="Ask Alfred…" autofocus></textarea>
+          <button class="send" id="send" disabled>Send</button>
+        </div>
+      </footer>
     </div>
-  </main>
-  <footer>
-    <div class="composer">
-      <textarea id="input" rows="1" placeholder="Ask Alfred…" autofocus></textarea>
-      <button id="send" disabled>Send</button>
-    </div>
-  </footer>
+  </div>
 
 <script>
-  let ready = false;
-  let busy = false;
+  let ready = false, busy = false, seq = 1;
+  const chats = [];           // [{id, title, messages:[{role,text,err?}]}]
+  let activeId = null;
 
-  const messages = document.getElementById("messages");
-  const empty = document.getElementById("empty");
+  const elChats = document.getElementById("chats");
+  const elMessages = document.getElementById("messages");
   const input = document.getElementById("input");
   const sendBtn = document.getElementById("send");
-  const sub = document.getElementById("sub");
+  const elPack = document.getElementById("pack");
 
   function api() { return window.pywebview && window.pywebview.api; }
+  function active() { return chats.find(c => c.id === activeId); }
 
-  function addMessage(who, text, cls) {
-    if (empty) empty.style.display = "none";
+  function newChat() {
+    const c = { id: "c" + (seq++), title: "New chat", messages: [] };
+    chats.unshift(c);
+    activeId = c.id;
+    renderChats();
+    renderMessages();
+    input.focus();
+  }
+
+  function selectChat(id) { activeId = id; renderChats(); renderMessages(); input.focus(); }
+
+  function renderChats() {
+    elChats.innerHTML = "";
+    for (const c of chats) {
+      const d = document.createElement("div");
+      d.className = "chatitem" + (c.id === activeId ? " active" : "");
+      d.textContent = c.title;
+      d.onclick = () => selectChat(c.id);
+      elChats.appendChild(d);
+    }
+  }
+
+  function renderMessages() {
+    const c = active();
+    elMessages.innerHTML = "";
+    if (!c || c.messages.length === 0) {
+      const e = document.createElement("div");
+      e.className = "empty";
+      e.innerHTML = '<div class="big">🎩</div><div>Good day. How may I be of service?</div>';
+      elMessages.appendChild(e);
+      return;
+    }
+    for (const m of c.messages) appendBubble(m.role, m.text, m.err);
+    window.scrollTo(0, document.body.scrollHeight);
+  }
+
+  function appendBubble(role, text, err) {
+    const cls = role === "user" ? "user" : "alfred";
     const msg = document.createElement("div");
-    msg.className = "msg " + (cls || who);
+    msg.className = "msg " + cls;
     const bubble = document.createElement("div");
     bubble.className = "bubble";
-    const label = document.createElement("div");
-    label.className = "who";
-    label.textContent = who;
+    const who = document.createElement("div");
+    who.className = "who";
+    who.textContent = role === "user" ? "You" : "Alfred";
     const body = document.createElement("div");
-    body.className = "body";
-    body.textContent = text || "";
-    bubble.appendChild(label);
-    bubble.appendChild(body);
+    body.className = "body" + (err ? " err" : "");
+    body.textContent = text;
+    bubble.appendChild(who); bubble.appendChild(body);
     msg.appendChild(bubble);
-    messages.appendChild(msg);
-    window.scrollTo(0, document.body.scrollHeight);
+    elMessages.appendChild(msg);
     return body;
   }
 
-  function setBusy(state) {
-    busy = state;
-    sendBtn.disabled = state || !ready;
-  }
+  function setBusy(state) { busy = state; sendBtn.disabled = state || !ready; }
 
   async function send() {
     const text = input.value.trim();
-    if (!text || busy || !ready) return;
-    addMessage("You", text, "user");
-    input.value = "";
-    input.style.height = "auto";
+    const c = active();
+    if (!text || busy || !ready || !c) return;
+    c.messages.push({ role: "user", text });
+    if (c.title === "New chat") { c.title = text.slice(0, 40); renderChats(); }
+    input.value = ""; input.style.height = "auto";
+    appendBubble("user", text);
+    const pending = appendBubble("alfred", "…");
     setBusy(true);
-    const pending = addMessage("Alfred", "…", "alfred");
+    window.scrollTo(0, document.body.scrollHeight);
     try {
-      const r = await api().ask(text);
-      pending.textContent = (r && r.text) ? r.text : "(no output)";
-      if (r && r.ok === false) pending.classList.add("err");
+      const r = await api().ask(c.messages);
+      const reply = (r && r.text) ? r.text : "(no output)";
+      const isErr = !!(r && r.ok === false);
+      pending.textContent = reply;
+      if (isErr) pending.classList.add("err");
+      c.messages.push({ role: "alfred", text: reply, err: isErr });
     } catch (e) {
       pending.textContent = "Error talking to the agent: " + e;
       pending.classList.add("err");
+      c.messages.push({ role: "alfred", text: String(e), err: true });
     }
     setBusy(false);
     window.scrollTo(0, document.body.scrollHeight);
@@ -141,33 +179,24 @@
   function init() {
     if (ready) return;
     ready = true;
+    if (chats.length === 0) newChat();
     setBusy(false);
     input.focus();
     const a = api();
     if (a && a.get_state) {
-      a.get_state().then(function (s) {
-        sub.textContent = s && s.pack ? ("pack: " + s.pack) : "no pack — generic";
-      }).catch(function () { sub.textContent = ""; });
+      a.get_state().then(s => { elPack.textContent = s && s.pack ? s.pack : "no pack"; })
+                   .catch(() => { elPack.textContent = ""; });
     }
   }
 
-  input.addEventListener("keydown", function (ev) {
-    if (ev.key === "Enter" && !ev.shiftKey) { ev.preventDefault(); send(); }
-  });
-  input.addEventListener("input", function () {
-    input.style.height = "auto";
-    input.style.height = Math.min(input.scrollHeight, 200) + "px";
-  });
+  document.getElementById("newchat").addEventListener("click", newChat);
   sendBtn.addEventListener("click", send);
+  input.addEventListener("keydown", ev => { if (ev.key === "Enter" && !ev.shiftKey) { ev.preventDefault(); send(); } });
+  input.addEventListener("input", () => { input.style.height = "auto"; input.style.height = Math.min(input.scrollHeight, 200) + "px"; });
 
-  // Prefer the official ready event, but poll as a fallback in case it fired
-  // before this script attached (or doesn't fire on some backends).
   window.addEventListener("pywebviewready", init);
   let tries = 0;
-  const poll = setInterval(function () {
-    if (api()) { clearInterval(poll); init(); }
-    else if (++tries > 40) { clearInterval(poll); }  // ~6s, then give up quietly
-  }, 150);
+  const poll = setInterval(() => { if (api()) { clearInterval(poll); init(); } else if (++tries > 40) clearInterval(poll); }, 150);
 </script>
 </body>
 </html>

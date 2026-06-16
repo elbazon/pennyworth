@@ -3,10 +3,9 @@
 These exercise everything except actually opening a window (no display needed).
 """
 
-from pathlib import Path
 
 from pennyworth.app import window
-from pennyworth.app.bridge import Bridge
+from pennyworth.app.bridge import Bridge, _compose
 from pennyworth.pack import NULL_PACK, Pack
 
 
@@ -30,22 +29,46 @@ def test_bridge_ask_returns_reply(tmp_path, monkeypatch):
     stub.chmod(0o755)
     monkeypatch.setenv("PENNYWORTH_AGENT", str(stub))
 
-    result = Bridge(pack_provider=lambda: NULL_PACK).ask("hi")
+    result = Bridge(pack_provider=lambda: NULL_PACK).ask([{"role": "user", "text": "hi"}])
     assert result["ok"] is True
     assert "hello-from-agent" in result["text"]
 
 
 def test_bridge_ask_reports_missing_agent(monkeypatch):
     monkeypatch.setenv("PENNYWORTH_AGENT", "definitely-not-a-real-binary-xyz")
-    result = Bridge(pack_provider=lambda: NULL_PACK).ask("hi")
+    result = Bridge(pack_provider=lambda: NULL_PACK).ask([{"role": "user", "text": "hi"}])
     assert result["ok"] is False
     assert "not found" in result["text"]
 
 
-def test_window_config_points_at_real_html():
+def test_bridge_ask_handles_empty():
+    assert Bridge(pack_provider=lambda: NULL_PACK).ask([])["ok"] is False
+
+
+def test_compose_single_turn_is_just_the_text():
+    assert _compose([{"role": "user", "text": "deploy it"}]) == "deploy it"
+
+
+def test_compose_includes_prior_turns():
+    request = _compose(
+        [
+            {"role": "user", "text": "what is 2+2"},
+            {"role": "alfred", "text": "Four, sir."},
+            {"role": "user", "text": "and times three?"},
+        ]
+    )
+    assert "Conversation so far" in request
+    assert "User: what is 2+2" in request
+    assert "Alfred: Four, sir." in request
+    assert request.rstrip().endswith("and times three?")
+
+
+def test_window_config_and_ui_asset():
     cfg = window.window_config()
     assert cfg["title"] == "Alfred"
-    assert Path(cfg["url"]).is_file()
+    assert "url" not in cfg  # the page is loaded as inline html, not a file url
+    assert window.index_path().is_file()
+    assert "<html" in window.index_path().read_text().lower()
 
 
 def test_ui_carries_no_platform_branding():
