@@ -14,8 +14,10 @@ import threading
 from collections.abc import Callable
 
 from pennyworth import packs as _packs
+from pennyworth import profile as _profile
 from pennyworth import runner as _runner
 from pennyworth.pack import Pack
+from pennyworth.profile import Profile
 
 
 def _compose(messages: list[dict]) -> str:
@@ -51,8 +53,10 @@ class Bridge:
     def __init__(
         self,
         pack_provider: Callable[[], Pack] = _packs.active_pack,
+        profile_provider: Callable[[], Profile] = _profile.active_profile,
     ) -> None:
         self._pack_provider = pack_provider
+        self._profile_provider = profile_provider
         # In-flight streaming turns, keyed by id. Each is the mutable buffer a
         # worker thread appends to and ``poll`` reads from, under ``_lock``.
         self._turns: dict[str, dict] = {}
@@ -82,7 +86,10 @@ class Bridge:
         chunks: list[str] = []
         try:
             code = _runner.stream(
-                request, self._pack_provider(), on_chunk=chunks.append
+                request,
+                self._pack_provider(),
+                on_chunk=chunks.append,
+                profile=self._profile_provider(),
             )
         except Exception as exc:  # surface any failure to the UI, don't crash
             return {"ok": False, "text": f"Error: {exc}"}
@@ -117,7 +124,12 @@ class Bridge:
                 turn["chunks"].append(text)
 
         try:
-            code = _runner.stream(request, self._pack_provider(), on_chunk=on_chunk)
+            code = _runner.stream(
+                request,
+                self._pack_provider(),
+                on_chunk=on_chunk,
+                profile=self._profile_provider(),
+            )
             ok = code == 0
         except Exception as exc:  # never let a worker thread die silently
             with self._lock:

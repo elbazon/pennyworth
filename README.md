@@ -48,10 +48,16 @@ alfred prompt                      # print the assembled brain for the active pa
 alfred pack attach examples/acme   # teach Alfred a platform
 alfred pack list
 alfred pack detach                 # back to the generic butler
+
+alfred profile set --name Haim --address sir   # how Alfred addresses you
+alfred profile show
+alfred profile clear
 ```
 
-Packs install under `PENNYWORTH_HOME` (default `~/.pennyworth`). A bare
-`alfred "<request>"` is shorthand for `alfred run`.
+Packs and your profile install under `PENNYWORTH_HOME` (default `~/.pennyworth`).
+A bare `alfred "<request>"` is shorthand for `alfred run`. With no profile set,
+Alfred falls back to the generic address rule (sir/madam, asking once when
+unsure).
 
 ## Build a pack
 

@@ -20,6 +20,7 @@ from collections.abc import Callable
 from pathlib import Path
 
 from pennyworth.pack import NULL_PACK, Pack
+from pennyworth.profile import NULL_PROFILE, Profile
 from pennyworth.prompt import build_system_prompt
 
 DEFAULT_AGENT = "claude"
@@ -117,12 +118,13 @@ def run(
     add_dirs: list[str] | None = None,
     allow_all: bool = False,
     extra_args: list[str] | None = None,
+    profile: Profile = NULL_PROFILE,
 ) -> int:
     """Assemble the brain for ``pack`` and run the host agent.
 
     Returns the agent's exit code, or 127 if the agent executable is missing.
     """
-    system_prompt = build_system_prompt(pack, chat_mode=interactive)
+    system_prompt = build_system_prompt(pack, chat_mode=interactive, profile=profile)
     cmd = build_command(
         request,
         system_prompt,
@@ -149,6 +151,7 @@ def stream(
     on_chunk: Callable[[str], None],
     add_dirs: list[str] | None = None,
     allow_all: bool = False,
+    profile: Profile = NULL_PROFILE,
 ) -> int:
     """Run the host agent and deliver its reply incrementally via ``on_chunk``.
 
@@ -158,7 +161,7 @@ def stream(
     folded into stdout). Returns the agent's exit code, or 127 if the agent
     executable is missing.
     """
-    system_prompt = build_system_prompt(pack, chat_mode=False)
+    system_prompt = build_system_prompt(pack, chat_mode=False, profile=profile)
     agent = agent_command()
     structured = _speaks_claude_protocol(agent)
     cmd = build_command(

@@ -95,12 +95,13 @@ Done in v0.1.0:
 - ✅ Seams: persona binding, principal, skills, team, repositories.
 - ✅ A reference pack (`examples/acme`) demonstrating the contract end to end.
 - ✅ The agent runner (drives the host coding agent) + CLI (`run` / `chat`).
-- ✅ A clean, unbranded desktop app (`alfred app`).
+- ✅ A clean, unbranded desktop app (`alfred app`), with streaming token output.
+- ✅ Per-user profile (name + form of address) so the no-pack butler addresses
+  you correctly — host config under `PENNYWORTH_HOME`, not a pack (`alfred profile`).
 
 Next:
 - More seams as needed (MCP "hands", CI), each gated by the clean-brain test.
-- Per-user profile (name + form of address) so the no-pack butler addresses you correctly.
-- Streaming token output in the desktop app; richer transcript/history.
+- Richer transcript/history in the desktop app.
 - Packaging & distribution (PyPI/release wheels), CI, contribution guide.
 
 ## 6. Open items

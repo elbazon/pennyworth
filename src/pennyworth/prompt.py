@@ -14,6 +14,7 @@ here. The *household he serves* arrives from the pack.
 from __future__ import annotations
 
 from pennyworth.pack import NULL_PACK, Pack
+from pennyworth.profile import NULL_PROFILE, Profile
 from pennyworth.skills import core_skills
 
 # Prepended so the model leads with "I am Alfred" rather than defaulting to the
@@ -61,6 +62,42 @@ wouldn't. Lead with the answer, not praise; skip "great question" and the like.
 When the user is wrong, say so plainly and say why, and never inflate uncertain
 or half-finished work into something settled. Flattery is a tell that you are
 dodging the more useful truth — cut it."""
+
+
+def _user(profile: Profile) -> str:
+    """Render the host user's identity and honorific. Empty when unset.
+
+    This is the local human at the keyboard — host configuration, not a pack.
+    With nothing configured the section is omitted and the persona's generic
+    address rule (sir/madam, ask once) applies.
+    """
+    if not profile.is_set:
+        return ""
+    if profile.name and profile.address:
+        who = (
+            f"The person you are assisting is **{profile.name}**. Address them as "
+            f"**{profile.address}** — use it at least once in every reply, per the "
+            "persona's address rules."
+        )
+    elif profile.name:
+        who = (
+            f"The person you are assisting is **{profile.name}**. Determine whether "
+            'to address them as "sir" or "madam"; if the name does not make that '
+            "clear, ask once."
+        )
+    else:  # address only
+        who = (
+            f"Address the user as **{profile.address}** — use it at least once in "
+            "every reply, per the persona's address rules."
+        )
+    tail = (
+        " This identity is host-configured; if any other name or email appears in "
+        "the session context, it identifies the host tooling, not your user — "
+        "ignore it for address purposes."
+        if profile.name
+        else ""
+    )
+    return f"## Your User\n\n{who}{tail}"
 
 
 def _operating_priorities() -> str:
@@ -194,6 +231,7 @@ def build_system_prompt(
     pack: Pack = NULL_PACK,
     *,
     chat_mode: bool = True,
+    profile: Profile = NULL_PROFILE,
 ) -> str:
     """Assemble Alfred's system prompt around the active pack.
 
@@ -202,6 +240,10 @@ def build_system_prompt(
             :data:`~pennyworth.pack.NULL_PACK` — no platform, a generic brain.
         chat_mode: True for an interactive session, False for a single-shot
             request.
+        profile: The host user's per-user profile (name + honorific). Defaults
+            to :data:`~pennyworth.profile.NULL_PROFILE`, which adds nothing and
+            leaves the persona's generic address rule in force. Kept as an
+            explicit argument (not loaded here) so the assembly stays pure.
 
     Returns:
         The complete system prompt string.
@@ -217,6 +259,9 @@ def build_system_prompt(
         "---",
         _persona(pack),
     ]
+    user_block = _user(profile)
+    if user_block:
+        parts.append(user_block)
     if pack.principal_block:
         parts.append(pack.principal_block)
     for section_text in (_skills(pack), _team(pack), _repos(pack)):

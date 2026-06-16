@@ -11,11 +11,12 @@ import sys
 
 from pennyworth import __version__
 from pennyworth import packs as _packs
+from pennyworth import profile as _profile
 from pennyworth import runner as _runner
 from pennyworth.prompt import build_system_prompt
 
 # Subcommands recognised before the bare-request shorthand kicks in.
-_COMMANDS = {"pack", "prompt", "run", "chat", "app"}
+_COMMANDS = {"pack", "profile", "prompt", "run", "chat", "app"}
 
 
 def _cmd_pack_list(_args: argparse.Namespace) -> int:
@@ -45,7 +46,7 @@ def _cmd_pack_detach(_args: argparse.Namespace) -> int:
 
 
 def _cmd_prompt(_args: argparse.Namespace) -> int:
-    print(build_system_prompt(_packs.active_pack()))
+    print(build_system_prompt(_packs.active_pack(), profile=_profile.active_profile()))
     return 0
 
 
@@ -55,6 +56,7 @@ def _cmd_run(args: argparse.Namespace) -> int:
         _packs.active_pack(),
         add_dirs=args.add_dirs,
         allow_all=args.allow_all,
+        profile=_profile.active_profile(),
     )
 
 
@@ -65,7 +67,39 @@ def _cmd_chat(args: argparse.Namespace) -> int:
         interactive=True,
         add_dirs=args.add_dirs,
         allow_all=args.allow_all,
+        profile=_profile.active_profile(),
     )
+
+
+def _cmd_profile_show(_args: argparse.Namespace) -> int:
+    prof = _profile.load_profile()
+    if not prof.is_set:
+        print(
+            "No profile set. Configure one with:\n"
+            "  alfred profile set --name <name> --address <sir|madam>"
+        )
+        return 0
+    print(f"name:    {prof.name or '(unset)'}")
+    print(f"address: {prof.address or '(unset — Alfred will ask)'}")
+    print(f"\nStored at {_profile.profile_path()}")
+    return 0
+
+
+def _cmd_profile_set(args: argparse.Namespace) -> int:
+    try:
+        prof = _profile.update_profile(name=args.name, address=args.address)
+    except ValueError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 2
+    addressed = f", addressed as {prof.address}" if prof.address else ""
+    print(f"Profile saved: {prof.name or '(no name)'}{addressed}.")
+    return 0
+
+
+def _cmd_profile_clear(_args: argparse.Namespace) -> int:
+    _profile.clear_profile()
+    print("Profile cleared. Alfred will use the generic address rule.")
+    return 0
 
 
 def _cmd_app(_args: argparse.Namespace) -> int:
@@ -112,6 +146,26 @@ def build_parser() -> argparse.ArgumentParser:
         func=_cmd_pack_detach
     )
 
+    profile_cmd = sub.add_parser(
+        "profile", help="manage your profile (name + how Alfred addresses you)"
+    )
+    profile_cmd.set_defaults(func=_cmd_profile_show)  # bare `alfred profile` shows
+    profile_sub = profile_cmd.add_subparsers(dest="profile_command")
+    profile_sub.add_parser("show", help="show your current profile").set_defaults(
+        func=_cmd_profile_show
+    )
+    pset = profile_sub.add_parser("set", help="set your name and/or honorific")
+    pset.add_argument("--name", help="your name")
+    pset.add_argument(
+        "--address",
+        choices=_profile.VALID_ADDRESSES,
+        help="how Alfred addresses you (sir or madam)",
+    )
+    pset.set_defaults(func=_cmd_profile_set)
+    profile_sub.add_parser("clear", help="clear your profile").set_defaults(
+        func=_cmd_profile_clear
+    )
+
     sub.add_parser(
         "prompt", help="print the assembled system prompt for the active pack"
     ).set_defaults(func=_cmd_prompt)
@@ -126,9 +180,9 @@ def build_parser() -> argparse.ArgumentParser:
     _add_agent_args(chat)
     chat.set_defaults(func=_cmd_chat)
 
-    sub.add_parser("app", help="launch the desktop app (needs the 'app' extra)").set_defaults(
-        func=_cmd_app
-    )
+    sub.add_parser(
+        "app", help="launch the desktop app (needs the 'app' extra)"
+    ).set_defaults(func=_cmd_app)
 
     return parser
 

@@ -8,7 +8,15 @@ specifics. That is enforced, not merely intended (see ``tests/test_clean_brain.p
 """
 
 from pennyworth.pack import NULL_PACK, Pack
+from pennyworth.profile import NULL_PROFILE, Profile
 from pennyworth.prompt import build_system_prompt
 
-__all__ = ["Pack", "NULL_PACK", "build_system_prompt", "__version__"]
+__all__ = [
+    "Pack",
+    "NULL_PACK",
+    "Profile",
+    "NULL_PROFILE",
+    "build_system_prompt",
+    "__version__",
+]
 __version__ = "0.1.0"

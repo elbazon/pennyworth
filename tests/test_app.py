@@ -6,6 +6,14 @@ These exercise everything except actually opening a window (no display needed).
 from pennyworth.app import window
 from pennyworth.app.bridge import Bridge, _compose
 from pennyworth.pack import NULL_PACK, Pack
+from pennyworth.profile import NULL_PROFILE
+
+
+def _bridge():
+    """A bridge with both seams pinned — deterministic, never touches host disk."""
+    return Bridge(
+        pack_provider=lambda: NULL_PACK, profile_provider=lambda: NULL_PROFILE
+    )
 
 
 def test_bridge_get_state():
@@ -28,18 +36,14 @@ def test_bridge_ask_returns_reply(tmp_path, monkeypatch):
     stub.chmod(0o755)
     monkeypatch.setenv("PENNYWORTH_AGENT", str(stub))
 
-    result = Bridge(pack_provider=lambda: NULL_PACK).ask(
-        [{"role": "user", "text": "hi"}]
-    )
+    result = _bridge().ask([{"role": "user", "text": "hi"}])
     assert result["ok"] is True
     assert "hello-from-agent" in result["text"]
 
 
 def test_bridge_ask_reports_missing_agent(monkeypatch):
     monkeypatch.setenv("PENNYWORTH_AGENT", "definitely-not-a-real-binary-xyz")
-    result = Bridge(pack_provider=lambda: NULL_PACK).ask(
-        [{"role": "user", "text": "hi"}]
-    )
+    result = _bridge().ask([{"role": "user", "text": "hi"}])
     assert result["ok"] is False
     assert "not found" in result["text"]
 
@@ -66,7 +70,7 @@ def test_bridge_start_and_poll_stream_reply(tmp_path, monkeypatch):
     stub.chmod(0o755)
     monkeypatch.setenv("PENNYWORTH_AGENT", str(stub))
 
-    bridge = Bridge(pack_provider=lambda: NULL_PACK)
+    bridge = _bridge()
     started = bridge.start([{"role": "user", "text": "hi"}])
     assert started["ok"] is True
     assert started["id"]
