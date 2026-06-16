@@ -8,6 +8,7 @@ awaits each method's return value — no cross-thread event pushing.
 
 from __future__ import annotations
 
+import base64
 import sys
 from pathlib import Path
 
@@ -22,6 +23,29 @@ def _web_dir() -> Path:
 def index_path() -> Path:
     """Absolute path to the bundled single-page UI."""
     return _web_dir() / "index.html"
+
+
+def portrait_path() -> Path:
+    """Absolute path to Alfred's portrait."""
+    return _web_dir() / "alfred.png"
+
+
+def _portrait_data_uri() -> str:
+    """Alfred's portrait as an inline data URI, or ``""`` if missing.
+
+    Inlined so the self-contained ``html=`` page can show it without an
+    external asset URL.
+    """
+    png = portrait_path()
+    if not png.is_file():
+        return ""
+    encoded = base64.b64encode(png.read_bytes()).decode("ascii")
+    return f"data:image/png;base64,{encoded}"
+
+
+def render_html() -> str:
+    """The UI markup with Alfred's portrait inlined (``{{PORTRAIT}}`` replaced)."""
+    return index_path().read_text().replace("{{PORTRAIT}}", _portrait_data_uri())
 
 
 def window_config() -> dict:
@@ -56,10 +80,9 @@ def main() -> int:
         print(f"UI asset missing: {index_path()}", file=sys.stderr)
         return 1
 
-    # The page is fully self-contained (all CSS/JS inline), so load its markup
-    # directly rather than via a file URL — no scheme/cache/path pitfalls.
-    html = index_path().read_text()
-    webview.create_window(html=html, js_api=Bridge(), **window_config())
+    # The page is fully self-contained (all CSS/JS inline, portrait inlined as a
+    # data URI), so load its markup directly rather than via a file URL.
+    webview.create_window(html=render_html(), js_api=Bridge(), **window_config())
     webview.start()
     return 0
 

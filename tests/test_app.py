@@ -82,3 +82,13 @@ def test_ui_uses_request_response_bridge():
     html = window.index_path().read_text()
     assert "api().ask(" in html
     assert "alfredEvent" not in html  # the fragile evaluate_js path is gone
+
+
+def test_portrait_asset_ships():
+    assert window.portrait_path().is_file()
+
+
+def test_render_html_inlines_the_portrait():
+    rendered = window.render_html()
+    assert "{{PORTRAIT}}" not in rendered  # placeholder was substituted
+    assert "data:image/png;base64," in rendered  # Alfred's face is embedded

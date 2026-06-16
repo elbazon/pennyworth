@@ -24,8 +24,9 @@
   /* Sidebar */
   .sidebar { width: 240px; min-width: 240px; background: var(--side); border-right: 1px solid var(--line); display: flex; flex-direction: column; }
   .brand { display: flex; align-items: center; gap: 9px; padding: 15px 16px; border-bottom: 1px solid var(--line); }
-  .brand .hat { font-size: 19px; }
+  .brand .avatar { width: 26px; height: 26px; border-radius: 50%; object-fit: cover; object-position: top center; background: var(--panel); }
   .brand .title { font-weight: 600; }
+  .bigportrait { width: 88px; height: 88px; border-radius: 50%; object-fit: cover; object-position: top center; display: block; margin: 0 auto 12px; background: var(--panel); }
   .brand .pack { color: var(--muted); font-size: 11.5px; margin-left: auto; }
   .newchat { margin: 12px; padding: 9px 12px; border: 1px solid var(--line); border-radius: 9px; background: transparent; color: var(--ink); cursor: pointer; font-family: var(--sans); font-size: 14px; }
   .newchat:hover { border-color: var(--accent); }
@@ -61,7 +62,8 @@
   <div class="app">
     <aside class="sidebar">
       <div class="brand">
-        <span class="hat">🎩</span><span class="title">Alfred</span>
+        <img class="avatar" src="{{PORTRAIT}}" alt="Alfred" onerror="this.style.display='none'" />
+        <span class="title">Alfred</span>
         <span class="pack" id="pack">…</span>
       </div>
       <button class="newchat" id="newchat">+ New chat</button>
@@ -120,7 +122,7 @@
     if (!c || c.messages.length === 0) {
       const e = document.createElement("div");
       e.className = "empty";
-      e.innerHTML = '<div class="big">🎩</div><div>Good day. How may I be of service?</div>';
+      e.innerHTML = '<img class="bigportrait" src="{{PORTRAIT}}" alt="Alfred" onerror="this.style.display=\'none\'" /><div>Good day. How may I be of service?</div>';
       elMessages.appendChild(e);
       return;
     }
