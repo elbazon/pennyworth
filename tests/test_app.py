@@ -3,6 +3,7 @@
 These exercise everything except actually opening a window (no display needed).
 """
 
+from pennyworth import profile as _profile
 from pennyworth.app import window
 from pennyworth.app.bridge import Bridge, _compose
 from pennyworth.pack import NULL_PACK, Pack
@@ -166,6 +167,46 @@ def test_open_url_opens_http(monkeypatch):
     assert opened == ["https://example.com"]
 
 
+# --- panels: skills, profile, about ---
+
+
+def test_list_skills_includes_core_skills():
+    rows = _bridge().list_skills()
+    names = {r["name"] for r in rows}
+    assert {"investigate", "pr_context", "testing"} <= names
+    assert all(r["source"] == "core" for r in rows)  # no pack attached
+    assert all(r["description"] for r in rows)
+
+
+def test_get_and_set_profile_round_trip(tmp_path, monkeypatch):
+    monkeypatch.setenv("PENNYWORTH_HOME", str(tmp_path))
+    bridge = Bridge(
+        pack_provider=lambda: NULL_PACK, profile_provider=_profile.active_profile
+    )
+    assert bridge.get_profile() == {
+        "name": "",
+        "address": "",
+        "addresses": ["sir", "madam"],
+    }
+    assert bridge.set_profile(name="Haim", address="sir")["ok"] is True
+    got = bridge.get_profile()
+    assert got["name"] == "Haim" and got["address"] == "sir"
+
+
+def test_set_profile_rejects_bad_address(tmp_path, monkeypatch):
+    monkeypatch.setenv("PENNYWORTH_HOME", str(tmp_path))
+    result = _bridge().set_profile(address="captain")
+    assert result["ok"] is False
+    assert "address" in result["error"]
+
+
+def test_about_names_alfred_and_pennyworth():
+    about = _bridge().about()
+    assert about["assistant"] == "Alfred"
+    assert about["project"] == "Pennyworth"
+    assert about["pack"] is None
+
+
 def test_compose_single_turn_is_just_the_text():
     assert _compose([{"role": "user", "text": "deploy it"}]) == "deploy it"
 
@@ -216,6 +257,16 @@ def test_ui_has_rich_features():
     for call in ("persist_chat(", "list_app_chats(", "load_app_chat(", "open_url("):
         assert call in html, f"UI never calls {call}"
     assert 'ev.key === "n"' in html  # the ⌘N new-chat shortcut
+
+
+def test_ui_has_panels():
+    """The UI wires the Layer-2 side panels (Skills, Settings, About)."""
+    html = window.index_path().read_text()
+    assert "showView(" in html
+    for call in ("list_skills(", "get_profile(", "set_profile(", "about("):
+        assert call in html, f"UI never calls {call}"
+    for view in ('data-view="skills"', 'data-view="settings"', 'data-view="about"'):
+        assert view in html, f"nav missing {view}"
 
 
 def test_portrait_asset_ships():

@@ -95,14 +95,19 @@ Done in v0.1.0:
 - ✅ Seams: persona binding, principal, skills, team, repositories.
 - ✅ A reference pack (`examples/acme`) demonstrating the contract end to end.
 - ✅ The agent runner (drives the host coding agent) + CLI (`run` / `chat`).
-- ✅ A clean, unbranded desktop app (`alfred app`), with streaming token output.
+- ✅ A clean, unbranded desktop app (`alfred app`): streaming token output,
+  markdown + code-copy rendering, a per-reply reasoning drawer (thinking + tool
+  activity) and cost, persisted multi-chat (restore/rename/delete), and Skills /
+  Settings / About panels.
 - ✅ Per-user profile (name + form of address) so the no-pack butler addresses
   you correctly — host config under `PENNYWORTH_HOME`, not a pack (`alfred profile`).
+- ✅ CI: ruff + the test suite on every push/PR across Python 3.11–3.13.
 
 Next:
-- More seams as needed (MCP "hands", CI), each gated by the clean-brain test.
-- Richer transcript/history in the desktop app.
-- Packaging & distribution (PyPI/release wheels), CI, contribution guide.
+- More seams as needed (MCP "hands"), each gated by the clean-brain test.
+- More app surface: embedded terminal, voice dictation, slash commands,
+  attachments, model/persona pickers, Stats / Scheduled panels.
+- Packaging & distribution (PyPI/release wheels), contribution guide.
 
 ## 6. Open items
 

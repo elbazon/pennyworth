@@ -20,6 +20,7 @@ from pathlib import Path
 from pennyworth import packs as _packs
 from pennyworth import profile as _profile
 from pennyworth import runner as _runner
+from pennyworth import skills as _skillmod
 from pennyworth.pack import Pack
 from pennyworth.profile import Profile
 
@@ -112,6 +113,60 @@ class Bridge:
             "app": "Pennyworth",
             "assistant": "Alfred",
             "pack": pack.name or None,
+        }
+
+    def list_skills(self) -> list[dict]:
+        """The Skill Library for the Skills panel — core skills plus the pack's.
+
+        Each row is ``{name, description, source}`` where ``source`` is
+        ``"core"`` for built-in craft skills or the pack's name for its own.
+        """
+        pack = self._pack_provider()
+        rows = [
+            {"name": s.name, "description": s.description, "source": "core"}
+            for s in _skillmod.core_skills()
+        ]
+        rows += [
+            {
+                "name": s.name,
+                "description": s.description,
+                "source": pack.name or "pack",
+            }
+            for s in pack.skills
+        ]
+        return rows
+
+    def get_profile(self) -> dict:
+        """The user's profile for the Settings panel."""
+        prof = self._profile_provider()
+        return {
+            "name": prof.name,
+            "address": prof.address,
+            "addresses": list(_profile.VALID_ADDRESSES),
+        }
+
+    def set_profile(self, name: str | None = None, address: str | None = None) -> dict:
+        """Update the stored profile (name and/or honorific). Validates address."""
+        try:
+            prof = _profile.update_profile(name=name, address=address)
+        except ValueError as exc:
+            return {"ok": False, "error": str(exc)}
+        return {"ok": True, "name": prof.name, "address": prof.address}
+
+    def about(self) -> dict:
+        """Static copy for the About panel — who Alfred is and what he does."""
+        pack = self._pack_provider()
+        return {
+            "assistant": "Alfred",
+            "project": "Pennyworth",
+            "tagline": "A dignified butler-engineer companion.",
+            "pack": pack.name or None,
+            "blurb": (
+                "Alfred reads, writes, and reviews code, navigates architecture, "
+                "diagnoses CI, and shepherds changes — in the unflappable voice of "
+                "a proper manservant. Everything platform-specific arrives through "
+                "a pack; with none attached he serves a generic codebase."
+            ),
         }
 
     def open_url(self, url: str) -> dict:

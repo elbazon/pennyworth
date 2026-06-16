@@ -96,6 +96,32 @@
   button.send { background: var(--accent); color: #21201d; border: 0; border-radius: 10px; padding: 0 18px; height: 44px; font-weight: 600; cursor: pointer; font-family: var(--sans); }
   button.send:disabled { opacity: .5; cursor: default; }
   .hint { max-width: 780px; margin: 6px auto 0; padding: 0 22px; font-size: 11px; color: var(--muted); }
+
+  /* Sidebar nav */
+  .nav { border-top: 1px solid var(--line); padding: 8px; display: flex; flex-wrap: wrap; gap: 4px; }
+  .nav button { flex: 1 1 auto; background: transparent; border: 1px solid transparent; color: var(--muted); font: inherit; font-size: 12.5px; padding: 7px 8px; border-radius: 7px; cursor: pointer; }
+  .nav button:hover { background: #2a2926; color: var(--ink); }
+  .nav button.on { color: var(--accent); border-color: var(--line); }
+
+  /* Panels */
+  .panel { flex: 1; overflow-y: auto; padding: 26px 0; }
+  .panel .wrap { max-width: 720px; }
+  .panelhead { font-size: 20px; font-weight: 600; margin: 0 0 4px; }
+  .panelsub { color: var(--muted); font-size: 13px; margin: 0 0 20px; }
+  .skill { padding: 12px 0; border-bottom: 1px solid var(--line); }
+  .skill .sn { font-family: var(--mono); font-size: 13px; color: var(--accent); }
+  .skill .src { font-size: 10.5px; color: var(--muted); border: 1px solid var(--line); border-radius: 5px; padding: 1px 6px; margin-left: 8px; }
+  .skill .sd { color: var(--ink); font-size: 13px; margin-top: 4px; line-height: 1.5; }
+  .field { margin: 0 0 16px; }
+  .field label { display: block; font-size: 12.5px; color: var(--muted); margin-bottom: 5px; }
+  .field input, .field select { width: 100%; background: var(--panel); color: var(--ink); border: 1px solid var(--line); border-radius: 8px; padding: 9px 11px; font: inherit; }
+  .field input:focus, .field select:focus { outline: none; border-color: var(--accent); }
+  .pbtn { background: var(--accent); color: #21201d; border: 0; border-radius: 8px; padding: 9px 16px; font-weight: 600; cursor: pointer; font: inherit; }
+  .pbtn.ghost { background: transparent; color: var(--ink); border: 1px solid var(--line); }
+  .saved { color: var(--accent); font-size: 12.5px; margin-left: 10px; }
+  .zoomrow { display: flex; align-items: center; gap: 8px; }
+  .aboutface { width: 96px; height: 96px; border-radius: 50%; object-fit: cover; object-position: top center; display: block; margin: 0 0 16px; }
+  .about p { line-height: 1.6; color: var(--ink); }
 </style>
 </head>
 <body>
@@ -108,10 +134,17 @@
       </div>
       <button class="newchat" id="newchat">＋ New chat</button>
       <div class="chats" id="chats"></div>
+      <div class="nav" id="nav">
+        <button data-view="chat" class="on">💬 Chat</button>
+        <button data-view="skills">⚡ Skills</button>
+        <button data-view="settings">⚙ Settings</button>
+        <button data-view="about">ℹ About</button>
+      </div>
     </aside>
     <div class="main">
       <main id="main"><div class="wrap" id="messages"></div></main>
-      <footer>
+      <section id="panel" class="panel" hidden><div class="wrap" id="panelBody"></div></section>
+      <footer id="composerBar">
         <div class="composer">
           <textarea id="input" rows="1" placeholder="Ask Alfred…" autofocus></textarea>
           <button class="send" id="send" disabled>Send</button>
@@ -134,6 +167,12 @@
   const input = document.getElementById("input");
   const sendBtn = document.getElementById("send");
   const elPack = document.getElementById("pack");
+  const elNav = document.getElementById("nav");
+  const elMain = document.getElementById("main");
+  const elPanel = document.getElementById("panel");
+  const elPanelBody = document.getElementById("panelBody");
+  const elComposerBar = document.getElementById("composerBar");
+  let currentView = "chat";
 
   function api() { return window.pywebview && window.pywebview.api; }
   function active() { return chats.find(c => c.id === activeId); }
@@ -173,12 +212,28 @@
     return h;
   }
 
+  /* ---------- views ---------- */
+  function showChatView() {
+    currentView = "chat";
+    [...elNav.children].forEach(b => b.classList.toggle("on", b.dataset.view === "chat"));
+    elMain.hidden = false; elComposerBar.hidden = false; elPanel.hidden = true;
+  }
+  function showView(name) {
+    if (name === "chat") { showChatView(); renderMessages(); input.focus(); return; }
+    currentView = name;
+    [...elNav.children].forEach(b => b.classList.toggle("on", b.dataset.view === name));
+    elMain.hidden = true; elComposerBar.hidden = true; elPanel.hidden = false;
+    if (name === "skills") renderSkills();
+    else if (name === "settings") renderSettings();
+    else if (name === "about") renderAbout();
+  }
+
   /* ---------- chat list ---------- */
   function newChat() {
     const c = { id: "c" + (seq++), title: "New chat", messages: [], cost: 0, stored: false, loaded: true };
     chats.unshift(c);
     activeId = c.id;
-    renderChats(); renderMessages(); input.focus();
+    renderChats(); renderMessages(); showChatView(); input.focus();
   }
 
   async function selectChat(id) {
@@ -195,7 +250,7 @@
       } catch (e) {}
       c.loaded = true;
     }
-    renderChats(); renderMessages(); input.focus();
+    renderChats(); renderMessages(); showChatView(); input.focus();
   }
 
   function renderChats() {
@@ -437,10 +492,67 @@
     }
   });
 
+  /* ---------- panels ---------- */
+  async function renderSkills() {
+    elPanelBody.innerHTML = '<div class="panelhead">Skill Library</div><div class="panelsub">Loading…</div>';
+    let rows = [];
+    try { rows = await api().list_skills() || []; } catch (e) {}
+    const head = '<div class="panelhead">Skill Library</div><div class="panelsub">' +
+      rows.length + ' skill' + (rows.length === 1 ? '' : 's') + ' Alfred reads on demand.</div>';
+    const list = rows.map(s =>
+      '<div class="skill"><span class="sn">' + escapeHtml(s.name) + '</span>' +
+      '<span class="src">' + escapeHtml(s.source) + '</span>' +
+      '<div class="sd">' + escapeHtml(s.description) + '</div></div>').join("");
+    elPanelBody.innerHTML = head + (list || '<div class="panelsub">No skills available.</div>');
+  }
+
+  async function renderSettings() {
+    let p = { name: "", address: "", addresses: ["sir", "madam"] };
+    try { p = await api().get_profile() || p; } catch (e) {}
+    const opts = ['<option value=""' + (p.address ? '' : ' selected') + '>— ask each time —</option>']
+      .concat((p.addresses || ["sir", "madam"]).map(a =>
+        '<option value="' + a + '"' + (a === p.address ? ' selected' : '') + '>' + a + '</option>')).join("");
+    const scale = Math.round((parseFloat(localStorage.getItem("uiScale") || "1")) * 100);
+    elPanelBody.innerHTML =
+      '<div class="panelhead">Settings</div>' +
+      '<div class="panelsub">How Alfred addresses you, and how the app looks.</div>' +
+      '<div class="field"><label>Your name</label><input id="setName" value="' + escapeHtml(p.name || "") + '" placeholder="e.g. Haim" /></div>' +
+      '<div class="field"><label>Address you as</label><select id="setAddr">' + opts + '</select></div>' +
+      '<div class="field"><button class="pbtn" id="setSave">Save</button><span class="saved" id="setSaved" hidden>Saved.</span></div>' +
+      '<div class="field"><label>Interface size</label><div class="zoomrow">' +
+        '<button class="pbtn ghost" id="zOut">A−</button><span id="zVal">' + scale + '%</span>' +
+        '<button class="pbtn ghost" id="zIn">A+</button><button class="pbtn ghost" id="zReset">Reset</button></div></div>';
+    document.getElementById("setSave").onclick = async () => {
+      try {
+        const r = await api().set_profile(document.getElementById("setName").value, document.getElementById("setAddr").value);
+        if (r && r.ok) { const s = document.getElementById("setSaved"); s.hidden = false; setTimeout(() => s.hidden = true, 1600); }
+      } catch (e) {}
+    };
+    const applyZoom = (v) => { v = Math.max(0.7, Math.min(1.6, Math.round(v * 100) / 100)); localStorage.setItem("uiScale", v); document.body.style.zoom = v; document.getElementById("zVal").textContent = Math.round(v * 100) + "%"; };
+    document.getElementById("zIn").onclick = () => applyZoom((parseFloat(localStorage.getItem("uiScale") || "1")) + 0.1);
+    document.getElementById("zOut").onclick = () => applyZoom((parseFloat(localStorage.getItem("uiScale") || "1")) - 0.1);
+    document.getElementById("zReset").onclick = () => applyZoom(1);
+  }
+
+  async function renderAbout() {
+    let a = {};
+    try { a = await api().about() || {}; } catch (e) {}
+    elPanelBody.innerHTML =
+      '<div class="panelhead">About</div>' +
+      '<div class="about"><img class="aboutface" src="{{PORTRAIT}}" onerror="this.style.display=\'none\'" />' +
+      '<p><strong>' + escapeHtml(a.assistant || "Alfred") + '</strong> — ' + escapeHtml(a.tagline || "") + '</p>' +
+      '<p>' + escapeHtml(a.blurb || "") + '</p>' +
+      (a.pack ? '<p class="panelsub">Active pack: ' + escapeHtml(a.pack) + '</p>'
+              : '<p class="panelsub">No pack attached — generic mode.</p>') +
+      '<p class="panelsub">Project: ' + escapeHtml(a.project || "Pennyworth") + '</p></div>';
+  }
+
   /* ---------- boot ---------- */
   async function init() {
     if (ready) return;
     ready = true;
+    const z = parseFloat(localStorage.getItem("uiScale") || "1");
+    if (z && z !== 1) document.body.style.zoom = z;
     const a = api();
     if (a && a.list_app_chats) {
       try {
@@ -457,6 +569,7 @@
   }
 
   document.getElementById("newchat").addEventListener("click", newChat);
+  elNav.querySelectorAll("button").forEach(b => b.addEventListener("click", () => showView(b.dataset.view)));
   sendBtn.addEventListener("click", send);
   input.addEventListener("keydown", ev => { if (ev.key === "Enter" && !ev.shiftKey) { ev.preventDefault(); send(); } });
   input.addEventListener("input", () => { input.style.height = "auto"; input.style.height = Math.min(input.scrollHeight, 200) + "px"; });
