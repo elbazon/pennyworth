@@ -73,8 +73,17 @@ overriding the team directory locally — generalise into this single pack abstr
 3. **A pack may be private.** Open-source core, closed-source pack is a supported shape.
 4. **Generic-by-default.** Every pack-filled seam has a platform-neutral fallback so the
    no-pack experience is coherent.
-5. **No platform specifics in core.** Names, repos, teams, and tooling of any particular
-   platform belong in a pack, never here.
+5. **No platform specifics in the brain.** The "brain" is the assembled system prompt —
+   persona, rules, the skills the core ships, and every section the core emits. Names, repos,
+   teams, and tooling of any particular platform belong in a pack, never in the brain.
+
+## 4a. Acceptance: a clean brain
+
+The extraction has a single, mechanical acceptance test: with **no pack** (or the generic
+default pack) attached, the **fully assembled prompt** must contain **zero** tokens of any
+specific platform — no platform name, no repository, no team member, no tool server, no CI
+host. A guard test renders the brain and asserts it is clean; one platform token leaking into
+the core is a failing build. "Looks clean" is not the bar — "greps clean" is.
 
 ## 5. Roadmap
 
