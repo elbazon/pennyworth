@@ -1,5 +1,7 @@
 # Pennyworth
 
+[![CI](https://github.com/greeninvoice/pennyworth/actions/workflows/ci.yml/badge.svg)](https://github.com/greeninvoice/pennyworth/actions/workflows/ci.yml)
+
 > A dignified butler-engineer AI companion for your platform. You talk to **Alfred**; the project is **Pennyworth**.
 
 Pennyworth is an open-source engineering companion. It reads, writes, and reviews
@@ -102,8 +104,9 @@ See [`docs/architecture.md`](docs/architecture.md) for the design.
 ## Status
 
 v0.1.0 — runnable. The persona, the pack mechanism (identity, principal, skills,
-team, repositories), the agent runner, and a desktop app all work end to end. The
-pack contract grows seam by seam.
+team, repositories), the per-user profile, the agent runner, and a desktop app
+(with streaming) all work end to end. CI runs ruff + the test suite on every push
+and pull request across Python 3.11–3.13. The pack contract grows seam by seam.
 
 ## License
 

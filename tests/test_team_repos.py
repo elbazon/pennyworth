@@ -10,7 +10,11 @@ EXAMPLE = Path(__file__).parents[1] / "examples" / "acme"
 
 def test_example_pack_loads_team_and_repos():
     pack = packs.load_pack(EXAMPLE)
-    assert [m.name for m in pack.team] == ["Ada Lovelace", "Alan Turing", "Grace Hopper"]
+    assert [m.name for m in pack.team] == [
+        "Ada Lovelace",
+        "Alan Turing",
+        "Grace Hopper",
+    ]
     assert pack.team[0].title == "Lead Engineer"
     assert [r.name for r in pack.repos] == ["acme-api", "acme-web"]
     assert pack.repos[0].path == "~/code/acme-api"

@@ -121,9 +121,7 @@ def list_packs() -> list[str]:
     if not directory.is_dir():
         return []
     return sorted(
-        child.name
-        for child in directory.iterdir()
-        if (child / MANIFEST_NAME).is_file()
+        child.name for child in directory.iterdir() if (child / MANIFEST_NAME).is_file()
     )
 
 
