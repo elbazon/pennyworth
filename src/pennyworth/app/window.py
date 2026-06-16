@@ -2,13 +2,13 @@
 
 A thin pywebview shell. ``pywebview`` is imported lazily inside :func:`main` so
 the package (and the CLI) work without the optional ``app`` extra installed.
+The web UI talks to :class:`~pennyworth.app.bridge.Bridge` via ``js_api`` and
+awaits each method's return value — no cross-thread event pushing.
 """
 
 from __future__ import annotations
 
-import json
 import sys
-import threading
 from pathlib import Path
 
 WINDOW_TITLE = "Alfred"
@@ -50,20 +50,11 @@ def main() -> int:
 
     from pennyworth.app.bridge import Bridge
 
-    holder: dict = {}
-    emit_lock = threading.Lock()
+    if not index_path().is_file():
+        print(f"UI asset missing: {index_path()}", file=sys.stderr)
+        return 1
 
-    def emit(event: dict) -> None:
-        window = holder.get("window")
-        if window is None:
-            return
-        payload = json.dumps(event)
-        # Serialise evaluate_js calls: concurrent ones from worker threads stall.
-        with emit_lock:
-            window.evaluate_js(f"window.alfredEvent({json.dumps(payload)})")
-
-    bridge = Bridge(emit=emit)
-    holder["window"] = webview.create_window(js_api=bridge, **window_config())
+    webview.create_window(js_api=Bridge(), **window_config())
     webview.start()
     return 0
 
