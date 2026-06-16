@@ -22,6 +22,26 @@ from dataclasses import dataclass
 
 
 @dataclass(frozen=True)
+class Skill:
+    """A single on-demand reference document a pack provides.
+
+    Skills are not inlined into the brain — only an index of them is. The brain
+    tells Alfred *when* to read each one and *where* it lives, and he reads it
+    via the host agent's file tools at the moment a task matches.
+
+    Attributes:
+        name: Short identifier (the file stem if the frontmatter omits one).
+        description: An action-bound "when to engage this" line, shown in the
+            Skill Library index.
+        path: Absolute path to the Markdown file on disk.
+    """
+
+    name: str
+    description: str
+    path: str
+
+
+@dataclass(frozen=True)
 class Pack:
     """A platform knowledge pack.
 
@@ -41,12 +61,16 @@ class Pack:
             *principal* — a primary user Alfred treats specially. Packs may
             keep this private; the core only injects whatever string it is
             given, and injects nothing when it is empty.
+        skills: The pack's on-demand reference documents. The brain renders an
+            index of these (never their contents); empty means no Skill Library
+            section at all.
     """
 
     name: str = ""
     platform_name: str = ""
     platform_blurb: str = ""
     principal_block: str = ""
+    skills: tuple[Skill, ...] = ()
 
     @property
     def is_attached(self) -> bool:

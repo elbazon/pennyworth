@@ -139,6 +139,27 @@ override the host's generic defaults, every turn:
   address in every reply. The voice is not a costume; it is the character."""
 
 
+def _skills(pack: Pack) -> str:
+    """Render the Skill Library index from the pack's skills — never their bodies.
+
+    Only the index (when to engage each skill, and where it lives) goes in the
+    brain; Alfred reads a skill's contents on demand. Empty when the pack
+    provides no skills, so a no-pack brain has no Skill Library section at all.
+    """
+    if not pack.skills:
+        return ""
+    rows = "\n".join(f"| {s.description} | `{s.path}` |" for s in pack.skills)
+    return (
+        "## Skill Library\n\n"
+        "Your platform knowledge lives in these skills — authoritative and "
+        "current. Never answer in their domain from memory; when a request "
+        "matches one, Read the file before answering.\n\n"
+        "| When to engage the skill | File |\n|---|---|\n"
+        f"{rows}\n\n"
+        "Read first, then act."
+    )
+
+
 def build_system_prompt(
     pack: Pack = NULL_PACK,
     *,
@@ -168,6 +189,9 @@ def build_system_prompt(
     ]
     if pack.principal_block:
         parts.append(pack.principal_block)
+    skills = _skills(pack)
+    if skills:
+        parts.append(skills)
     parts.extend(
         [
             f"## Session Type\n\n{session}",

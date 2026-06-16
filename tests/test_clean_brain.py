@@ -13,7 +13,7 @@ of here on purpose.
 """
 
 from pennyworth import NULL_PACK, build_system_prompt
-from pennyworth.pack import Pack
+from pennyworth.pack import Pack, Skill
 
 # Stand-ins for whatever a real (possibly private) pack would inject.
 _SENTINELS = {
@@ -21,10 +21,21 @@ _SENTINELS = {
     "platform_blurb": "It runs the EXAMPLE-STACK-SENTINEL end to end.",
     "principal_block": "## Principal\nThe EXAMPLE-PRINCIPAL-SENTINEL, served specially.",
 }
+_SKILL = Skill(
+    name="sentinel",
+    description="SKILL-DESC-SENTINEL — when to engage.",
+    path="/tmp/SKILL-PATH-SENTINEL.md",
+)
 
 
 def _loaded_pack() -> Pack:
-    return Pack(name="sentinel", **_SENTINELS)
+    return Pack(name="sentinel", skills=(_SKILL,), **_SENTINELS)
+
+
+def _all_pack_lines() -> list[str]:
+    lines = [line for value in _SENTINELS.values() for line in value.splitlines()]
+    lines += [_SKILL.description, _SKILL.path]
+    return lines
 
 
 def test_attached_pack_content_reaches_the_brain():
@@ -32,17 +43,18 @@ def test_attached_pack_content_reaches_the_brain():
     for value in _SENTINELS.values():
         fragment = value.splitlines()[0]
         assert fragment in brain, f"pack seam did not reach the brain: {fragment!r}"
+    assert _SKILL.description in brain
+    assert _SKILL.path in brain
 
 
 def test_null_brain_is_free_of_all_pack_content():
     """With no pack, none of a pack's content survives anywhere in the brain."""
     brain = build_system_prompt(NULL_PACK)
-    for value in _SENTINELS.values():
-        for line in value.splitlines():
-            assert line not in brain, (
-                f"null brain leaked pack content: {line!r} — a platform seam is "
-                "hard-coded into the core instead of arriving from the pack."
-            )
+    for line in _all_pack_lines():
+        assert line not in brain, (
+            f"null brain leaked pack content: {line!r} — a platform seam is "
+            "hard-coded into the core instead of arriving from the pack."
+        )
 
 
 def test_null_brain_names_no_platform():
@@ -51,3 +63,4 @@ def test_null_brain_names_no_platform():
     brain = build_system_prompt(NULL_PACK)
     assert "across the developer's codebase and tooling" in brain
     assert "## Principal" not in brain
+    assert "## Skill Library" not in brain
