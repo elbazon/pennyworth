@@ -3,7 +3,6 @@
 These exercise everything except actually opening a window (no display needed).
 """
 
-
 from pennyworth.app import window
 from pennyworth.app.bridge import Bridge, _compose
 from pennyworth.pack import NULL_PACK, Pack
@@ -29,20 +28,65 @@ def test_bridge_ask_returns_reply(tmp_path, monkeypatch):
     stub.chmod(0o755)
     monkeypatch.setenv("PENNYWORTH_AGENT", str(stub))
 
-    result = Bridge(pack_provider=lambda: NULL_PACK).ask([{"role": "user", "text": "hi"}])
+    result = Bridge(pack_provider=lambda: NULL_PACK).ask(
+        [{"role": "user", "text": "hi"}]
+    )
     assert result["ok"] is True
     assert "hello-from-agent" in result["text"]
 
 
 def test_bridge_ask_reports_missing_agent(monkeypatch):
     monkeypatch.setenv("PENNYWORTH_AGENT", "definitely-not-a-real-binary-xyz")
-    result = Bridge(pack_provider=lambda: NULL_PACK).ask([{"role": "user", "text": "hi"}])
+    result = Bridge(pack_provider=lambda: NULL_PACK).ask(
+        [{"role": "user", "text": "hi"}]
+    )
     assert result["ok"] is False
     assert "not found" in result["text"]
 
 
 def test_bridge_ask_handles_empty():
     assert Bridge(pack_provider=lambda: NULL_PACK).ask([])["ok"] is False
+
+
+def _drain(bridge, turn_id, *, budget=300):
+    """Poll a streaming turn to completion, returning the final poll result."""
+    import time
+
+    for _ in range(budget):
+        result = bridge.poll(turn_id)
+        if result["done"]:
+            return result
+        time.sleep(0.01)
+    raise AssertionError("turn did not finish in time")
+
+
+def test_bridge_start_and_poll_stream_reply(tmp_path, monkeypatch):
+    stub = tmp_path / "agent.sh"
+    stub.write_text("#!/bin/sh\necho streamed-reply\n")
+    stub.chmod(0o755)
+    monkeypatch.setenv("PENNYWORTH_AGENT", str(stub))
+
+    bridge = Bridge(pack_provider=lambda: NULL_PACK)
+    started = bridge.start([{"role": "user", "text": "hi"}])
+    assert started["ok"] is True
+    assert started["id"]
+
+    final = _drain(bridge, started["id"])
+    assert final["ok"] is True
+    assert "streamed-reply" in final["text"]
+    # The turn is forgotten once done — a second poll finds nothing.
+    assert bridge.poll(started["id"]) == {"ok": False, "done": True, "text": ""}
+
+
+def test_bridge_start_handles_empty():
+    started = Bridge(pack_provider=lambda: NULL_PACK).start([])
+    assert started["ok"] is False
+    assert started["id"] is None
+
+
+def test_bridge_poll_unknown_turn():
+    result = Bridge(pack_provider=lambda: NULL_PACK).poll("no-such-turn")
+    assert result == {"ok": False, "done": True, "text": ""}
 
 
 def test_compose_single_turn_is_just_the_text():
@@ -78,10 +122,12 @@ def test_ui_carries_no_platform_branding():
 
 
 def test_ui_uses_request_response_bridge():
-    """The UI awaits api.ask() rather than relying on cross-thread event pushes."""
+    """The UI polls api.start()/api.poll() — request/response, no cross-thread push."""
     html = window.index_path().read_text()
-    assert "api().ask(" in html
+    assert "api().start(" in html
+    assert "api().poll(" in html
     assert "alfredEvent" not in html  # the fragile evaluate_js path is gone
+    assert "evaluate_js" not in html
 
 
 def test_portrait_asset_ships():

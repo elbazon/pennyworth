@@ -9,6 +9,8 @@ that path is unreliable. The request/response shape is simpler and robust.
 
 from __future__ import annotations
 
+import itertools
+import threading
 from collections.abc import Callable
 
 from pennyworth import packs as _packs
@@ -51,6 +53,11 @@ class Bridge:
         pack_provider: Callable[[], Pack] = _packs.active_pack,
     ) -> None:
         self._pack_provider = pack_provider
+        # In-flight streaming turns, keyed by id. Each is the mutable buffer a
+        # worker thread appends to and ``poll`` reads from, under ``_lock``.
+        self._turns: dict[str, dict] = {}
+        self._lock = threading.Lock()
+        self._ids = itertools.count(1)
 
     # --- methods callable from JS via window.pywebview.api.* ---
 
@@ -81,3 +88,58 @@ class Bridge:
             return {"ok": False, "text": f"Error: {exc}"}
         reply = "".join(chunks).strip()
         return {"ok": code == 0, "text": reply or "(the agent produced no output)"}
+
+    def start(self, messages: list[dict]) -> dict:
+        """Begin a streaming turn; returns ``{"ok", "id"}``.
+
+        The agent runs on a background thread, accumulating its reply into a
+        server-side buffer. The UI calls :meth:`poll` to render the reply as it
+        grows — request/response only, never a cross-thread event push.
+        """
+        request = _compose(messages or [])
+        if not request:
+            return {"ok": False, "id": None}
+        turn_id = f"t{next(self._ids)}"
+        turn = {"chunks": [], "done": False, "ok": False}
+        with self._lock:
+            self._turns[turn_id] = turn
+        worker = threading.Thread(
+            target=self._run_turn, args=(turn, request), daemon=True
+        )
+        worker.start()
+        return {"ok": True, "id": turn_id}
+
+    def _run_turn(self, turn: dict, request: str) -> None:
+        """Drive one streaming turn on a worker thread into ``turn``'s buffer."""
+
+        def on_chunk(text: str) -> None:
+            with self._lock:
+                turn["chunks"].append(text)
+
+        try:
+            code = _runner.stream(request, self._pack_provider(), on_chunk=on_chunk)
+            ok = code == 0
+        except Exception as exc:  # never let a worker thread die silently
+            with self._lock:
+                turn["chunks"].append(f"Error: {exc}")
+            ok = False
+        with self._lock:
+            turn["ok"] = ok
+            turn["done"] = True
+
+    def poll(self, turn_id: str) -> dict:
+        """Return the reply accumulated so far for ``turn_id``.
+
+        ``{"ok", "done", "text"}``. When ``done`` is true the turn has finished
+        and is forgotten after this call, so poll until ``done`` then stop.
+        """
+        with self._lock:
+            turn = self._turns.get(turn_id)
+            if turn is None:
+                return {"ok": False, "done": True, "text": ""}
+            text = "".join(turn["chunks"])
+            done = turn["done"]
+            ok = turn["ok"]
+            if done:
+                self._turns.pop(turn_id, None)
+        return {"ok": ok, "done": done, "text": text}

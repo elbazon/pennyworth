@@ -150,6 +150,28 @@
 
   function setBusy(state) { busy = state; sendBtn.disabled = state || !ready; }
 
+  // Poll a streaming turn, growing the bubble as text arrives. Request/response
+  // only — we never let Python push into the page (unreliable on macOS WKWebView).
+  function streamTurn(id, pending) {
+    return new Promise((resolve, reject) => {
+      let started = false;
+      const tick = async () => {
+        let r;
+        try { r = await api().poll(id); }
+        catch (e) { reject(e); return; }
+        if (r && typeof r.text === "string" && r.text.length) {
+          if (!started) { pending.textContent = ""; started = true; }
+          const nearBottom = (window.innerHeight + window.scrollY) >= (document.body.scrollHeight - 60);
+          pending.textContent = r.text;
+          if (nearBottom) window.scrollTo(0, document.body.scrollHeight);
+        }
+        if (r && r.done) { resolve(r); return; }
+        setTimeout(tick, 90);
+      };
+      tick();
+    });
+  }
+
   async function send() {
     const text = input.value.trim();
     const c = active();
@@ -162,12 +184,19 @@
     setBusy(true);
     window.scrollTo(0, document.body.scrollHeight);
     try {
-      const r = await api().ask(c.messages);
-      const reply = (r && r.text) ? r.text : "(no output)";
-      const isErr = !!(r && r.ok === false);
-      pending.textContent = reply;
-      if (isErr) pending.classList.add("err");
-      c.messages.push({ role: "alfred", text: reply, err: isErr });
+      const started = await api().start(c.messages);
+      if (!started || started.ok === false || !started.id) {
+        const msg = "(nothing to ask)";
+        pending.textContent = msg; pending.classList.add("err");
+        c.messages.push({ role: "alfred", text: msg, err: true });
+      } else {
+        const r = await streamTurn(started.id, pending);
+        const reply = (r && r.text) ? r.text : "(the agent produced no output)";
+        const isErr = !!(r && r.ok === false);
+        pending.textContent = reply;
+        if (isErr) pending.classList.add("err");
+        c.messages.push({ role: "alfred", text: reply, err: isErr });
+      }
     } catch (e) {
       pending.textContent = "Error talking to the agent: " + e;
       pending.classList.add("err");

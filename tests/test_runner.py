@@ -75,3 +75,49 @@ def test_stream_reports_missing_agent(monkeypatch):
     chunks: list[str] = []
     assert runner.stream("hi", on_chunk=chunks.append) == 127
     assert any("not found" in c for c in chunks)
+
+
+def test_extract_text_delta_pulls_visible_text():
+    line = (
+        '{"type":"stream_event","event":{"type":"content_block_delta",'
+        '"index":0,"delta":{"type":"text_delta","text":"good day"}}}'
+    )
+    assert runner.extract_text_delta(line) == "good day"
+
+
+def test_extract_text_delta_ignores_envelopes_thinking_and_noise():
+    assert runner.extract_text_delta('{"type":"system","subtype":"init"}') is None
+    assert runner.extract_text_delta('{"type":"result","result":"hi"}') is None
+    # thinking is not the visible reply
+    thinking = (
+        '{"type":"stream_event","event":{"type":"content_block_delta",'
+        '"delta":{"type":"thinking_delta","thinking":"hmm"}}}'
+    )
+    assert runner.extract_text_delta(thinking) is None
+    assert runner.extract_text_delta("not json at all") is None
+    assert runner.extract_text_delta("") is None
+
+
+def test_stream_parses_claude_stream_json(tmp_path, monkeypatch):
+    # A stub literally named `claude` triggers the stream-json parsing path;
+    # it ignores the streaming flags and just emits canned NDJSON events.
+    ndjson = tmp_path / "events.ndjson"
+    ndjson.write_text(
+        '{"type":"system","subtype":"init"}\n'
+        '{"type":"stream_event","event":{"type":"content_block_delta",'
+        '"delta":{"type":"text_delta","text":"Good "}}}\n'
+        '{"type":"stream_event","event":{"type":"content_block_delta",'
+        '"delta":{"type":"text_delta","text":"day, sir."}}}\n'
+        '{"type":"result","subtype":"success","result":"Good day, sir."}\n'
+    )
+    bindir = tmp_path / "bin"
+    bindir.mkdir()
+    stub = bindir / "claude"
+    stub.write_text(f'#!/bin/sh\ncat "{ndjson}"\n')
+    stub.chmod(0o755)
+    monkeypatch.setenv("PENNYWORTH_AGENT", str(stub))
+
+    chunks: list[str] = []
+    assert runner.stream("hi", on_chunk=chunks.append) == 0
+    # Only the two text deltas are surfaced — envelopes are dropped.
+    assert "".join(chunks) == "Good day, sir."
