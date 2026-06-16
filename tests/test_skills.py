@@ -37,9 +37,40 @@ def test_core_skills_present_without_a_pack():
 
 def test_core_skills_are_discovered_and_exist_on_disk():
     names = {s.name for s in core.core_skills()}
-    assert {"investigate", "pr_context", "lean_product_reviewer", "worth_it"} <= names
+    assert {
+        "investigate",
+        "pr_context",
+        "lean_product_reviewer",
+        "worth_it",
+        "aws_docs_mcp",
+        "mcp_oauth",
+        "testing",
+    } <= names
     for skill in core.core_skills():
         assert Path(skill.path).is_file()
+
+
+# Vocabulary that belongs to a specific platform, never to the OSS core. Core
+# skills are platform-agnostic craft; platform specifics arrive only via a pack.
+_PLATFORM_TOKENS = (
+    "morning",
+    "greeninvoice",
+    "teamcity",
+    "localstack",
+    "ploni",
+    "fiona",
+)
+
+
+def test_core_skills_carry_no_platform_vocabulary():
+    """A built-in skill that named a platform would leak it into every brain."""
+    for skill in core.core_skills():
+        body = Path(skill.path).read_text().lower()
+        for token in _PLATFORM_TOKENS:
+            assert token not in body, (
+                f"built-in skill {skill.name!r} leaked platform vocabulary "
+                f"{token!r} — core skills must stay platform-agnostic."
+            )
 
 
 def test_frontmatter_parser():
