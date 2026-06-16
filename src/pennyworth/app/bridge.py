@@ -13,6 +13,7 @@ import itertools
 import json
 import threading
 import time
+import webbrowser
 from collections.abc import Callable
 from pathlib import Path
 
@@ -112,6 +113,21 @@ class Bridge:
             "assistant": "Alfred",
             "pack": pack.name or None,
         }
+
+    def open_url(self, url: str) -> dict:
+        """Open an http(s) URL in the user's browser.
+
+        Links in a rendered reply would otherwise navigate the whole WKWebView
+        away from the app; the UI routes clicks here instead.
+        """
+        url = str(url or "")
+        if not (url.startswith("http://") or url.startswith("https://")):
+            return {"ok": False, "error": "only http(s) urls are opened"}
+        try:
+            webbrowser.open(url)
+            return {"ok": True}
+        except Exception as exc:  # browser launch is best-effort
+            return {"ok": False, "error": str(exc)}
 
     def ask(self, messages: list[dict]) -> dict:
         """Run one turn for a chat transcript and return the full reply.

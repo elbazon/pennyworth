@@ -150,6 +150,22 @@ def test_chat_id_is_sanitized_against_traversal(tmp_path, monkeypatch):
     assert len(files) == 1
 
 
+def test_open_url_rejects_non_http(monkeypatch):
+    opened = []
+    monkeypatch.setattr("webbrowser.open", lambda u: opened.append(u))
+    bridge = _bridge()
+    assert bridge.open_url("file:///etc/passwd")["ok"] is False
+    assert bridge.open_url("javascript:alert(1)")["ok"] is False
+    assert opened == []  # nothing was launched
+
+
+def test_open_url_opens_http(monkeypatch):
+    opened = []
+    monkeypatch.setattr("webbrowser.open", lambda u: opened.append(u))
+    assert _bridge().open_url("https://example.com")["ok"] is True
+    assert opened == ["https://example.com"]
+
+
 def test_compose_single_turn_is_just_the_text():
     assert _compose([{"role": "user", "text": "deploy it"}]) == "deploy it"
 
@@ -189,6 +205,17 @@ def test_ui_uses_request_response_bridge():
     assert "api().poll(" in html
     assert "alfredEvent" not in html  # the fragile evaluate_js path is gone
     assert "evaluate_js" not in html
+
+
+def test_ui_has_rich_features():
+    """The UI wires the Layer-1 features: markdown, persistence, links, shortcuts."""
+    html = window.index_path().read_text()
+    assert "renderMarkdown(" in html  # rendered replies, not plain text
+    assert "cbcopy" in html  # code-block copy buttons
+    assert "paintReason(" in html  # thinking + tool-step reasoning drawer
+    for call in ("persist_chat(", "list_app_chats(", "load_app_chat(", "open_url("):
+        assert call in html, f"UI never calls {call}"
+    assert 'ev.key === "n"' in html  # the ⌘N new-chat shortcut
 
 
 def test_portrait_asset_ships():
