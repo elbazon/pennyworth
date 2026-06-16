@@ -11,16 +11,18 @@ and sandboxes can redirect it freely.
 
 from __future__ import annotations
 
+import json
 import os
 import shutil
 from pathlib import Path
 
 import tomllib
 
-from pennyworth.pack import NULL_PACK, Pack, Skill
+from pennyworth.pack import NULL_PACK, Member, Pack, Repo, Skill
 
 MANIFEST_NAME = "pennyworth-pack.toml"
 SKILLS_DIRNAME = "skills"
+TEAM_FILENAME = "team.json"
 
 
 def _parse_frontmatter(text: str) -> tuple[str, str]:
@@ -43,6 +45,45 @@ def _parse_frontmatter(text: str) -> tuple[str, str]:
         elif key == "description":
             description = value.strip()
     return name, description
+
+
+def _load_team(pack_dir: Path) -> tuple[Member, ...]:
+    """Read ``team.json`` (``{"members": [{"name", "title"}, ...]}``) if present."""
+    team_file = pack_dir / TEAM_FILENAME
+    if not team_file.is_file():
+        return ()
+    try:
+        data = json.loads(team_file.read_text())
+    except (OSError, ValueError):
+        return ()
+    members: list[Member] = []
+    for entry in data.get("members") or []:
+        if not isinstance(entry, dict):
+            continue
+        name = str(entry.get("name") or "").strip()
+        if not name:
+            continue
+        members.append(Member(name=name, title=str(entry.get("title") or "").strip()))
+    return tuple(members)
+
+
+def _load_repos(data: dict) -> tuple[Repo, ...]:
+    """Read the manifest's top-level ``[[repos]]`` array of ``{name, path, description}``."""
+    repos: list[Repo] = []
+    for entry in data.get("repos") or []:
+        if not isinstance(entry, dict):
+            continue
+        name = str(entry.get("name") or "").strip()
+        if not name:
+            continue
+        repos.append(
+            Repo(
+                name=name,
+                path=str(entry.get("path") or "").strip(),
+                description=str(entry.get("description") or "").strip(),
+            )
+        )
+    return tuple(repos)
 
 
 def _load_skills(pack_dir: Path) -> tuple[Skill, ...]:
@@ -112,6 +153,8 @@ def load_pack(path: str | Path) -> Pack:
         platform_blurb=str(section.get("platform_blurb") or "").strip(),
         principal_block=principal_block,
         skills=_load_skills(src),
+        team=_load_team(src),
+        repos=_load_repos(data),
     )
 
 

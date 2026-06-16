@@ -42,6 +42,34 @@ class Skill:
 
 
 @dataclass(frozen=True)
+class Member:
+    """A person on the platform's team, for the roster the brain renders.
+
+    Attributes:
+        name: The person's name.
+        title: Their role/title (may be empty).
+    """
+
+    name: str
+    title: str = ""
+
+
+@dataclass(frozen=True)
+class Repo:
+    """A repository the platform works in, for the inventory the brain renders.
+
+    Attributes:
+        name: How the repository is referred to.
+        path: Where it lives on disk (may use ``~``).
+        description: One line on what it is (may be empty).
+    """
+
+    name: str
+    path: str = ""
+    description: str = ""
+
+
+@dataclass(frozen=True)
 class Pack:
     """A platform knowledge pack.
 
@@ -64,6 +92,10 @@ class Pack:
         skills: The pack's on-demand reference documents. The brain renders an
             index of these (never their contents); empty means no Skill Library
             section at all.
+        team: The platform's people, rendered as a roster so Alfred knows the
+            team. Empty means no Team section.
+        repos: The repositories the platform works in, rendered as an inventory.
+            Empty means no Repositories section.
     """
 
     name: str = ""
@@ -71,6 +103,8 @@ class Pack:
     platform_blurb: str = ""
     principal_block: str = ""
     skills: tuple[Skill, ...] = ()
+    team: tuple[Member, ...] = ()
+    repos: tuple[Repo, ...] = ()
 
     @property
     def is_attached(self) -> bool:

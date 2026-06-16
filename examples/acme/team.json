@@ -1,0 +1,7 @@
+{
+  "members": [
+    { "name": "Ada Lovelace", "title": "Lead Engineer" },
+    { "name": "Alan Turing", "title": "Architect" },
+    { "name": "Grace Hopper", "title": "Staff Engineer" }
+  ]
+}

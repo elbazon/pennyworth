@@ -160,6 +160,33 @@ def _skills(pack: Pack) -> str:
     )
 
 
+def _team(pack: Pack) -> str:
+    """Render the team roster from the pack. Empty when the pack has no team."""
+    if not pack.team:
+        return ""
+    lines = "\n".join(
+        f"- **{m.name}**" + (f" — {m.title}" if m.title else "") for m in pack.team
+    )
+    return (
+        "## The Team\n\n"
+        "The people you work with — treat them as colleagues, not strangers:\n\n"
+        f"{lines}"
+    )
+
+
+def _repos(pack: Pack) -> str:
+    """Render the repository inventory from the pack. Empty when none."""
+    if not pack.repos:
+        return ""
+    lines = "\n".join(
+        f"- **{r.name}**"
+        + (f" (`{r.path}`)" if r.path else "")
+        + (f" — {r.description}" if r.description else "")
+        for r in pack.repos
+    )
+    return "## Repositories\n\n" + lines
+
+
 def build_system_prompt(
     pack: Pack = NULL_PACK,
     *,
@@ -189,9 +216,9 @@ def build_system_prompt(
     ]
     if pack.principal_block:
         parts.append(pack.principal_block)
-    skills = _skills(pack)
-    if skills:
-        parts.append(skills)
+    for section_text in (_skills(pack), _team(pack), _repos(pack)):
+        if section_text:
+            parts.append(section_text)
     parts.extend(
         [
             f"## Session Type\n\n{session}",

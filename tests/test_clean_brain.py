@@ -13,7 +13,7 @@ of here on purpose.
 """
 
 from pennyworth import NULL_PACK, build_system_prompt
-from pennyworth.pack import Pack, Skill
+from pennyworth.pack import Member, Pack, Repo, Skill
 
 # Stand-ins for whatever a real (possibly private) pack would inject.
 _SENTINELS = {
@@ -26,15 +26,28 @@ _SKILL = Skill(
     description="SKILL-DESC-SENTINEL — when to engage.",
     path="/tmp/SKILL-PATH-SENTINEL.md",
 )
+_MEMBER = Member(name="MEMBER-NAME-SENTINEL", title="MEMBER-TITLE-SENTINEL")
+_REPO = Repo(
+    name="REPO-NAME-SENTINEL",
+    path="/tmp/REPO-PATH-SENTINEL",
+    description="REPO-DESC-SENTINEL",
+)
 
 
 def _loaded_pack() -> Pack:
-    return Pack(name="sentinel", skills=(_SKILL,), **_SENTINELS)
+    return Pack(
+        name="sentinel",
+        skills=(_SKILL,),
+        team=(_MEMBER,),
+        repos=(_REPO,),
+        **_SENTINELS,
+    )
 
 
 def _all_pack_lines() -> list[str]:
     lines = [line for value in _SENTINELS.values() for line in value.splitlines()]
     lines += [_SKILL.description, _SKILL.path]
+    lines += [_MEMBER.name, _MEMBER.title, _REPO.name, _REPO.path, _REPO.description]
     return lines
 
 
@@ -43,8 +56,14 @@ def test_attached_pack_content_reaches_the_brain():
     for value in _SENTINELS.values():
         fragment = value.splitlines()[0]
         assert fragment in brain, f"pack seam did not reach the brain: {fragment!r}"
-    assert _SKILL.description in brain
-    assert _SKILL.path in brain
+    for fragment in (
+        _SKILL.description,
+        _SKILL.path,
+        _MEMBER.name,
+        _REPO.name,
+        _REPO.description,
+    ):
+        assert fragment in brain, f"pack seam did not reach the brain: {fragment!r}"
 
 
 def test_null_brain_is_free_of_all_pack_content():
@@ -64,3 +83,5 @@ def test_null_brain_names_no_platform():
     assert "across the developer's codebase and tooling" in brain
     assert "## Principal" not in brain
     assert "## Skill Library" not in brain
+    assert "## The Team" not in brain
+    assert "## Repositories" not in brain

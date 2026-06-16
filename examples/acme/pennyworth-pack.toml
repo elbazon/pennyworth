@@ -6,3 +6,13 @@ name = "acme"
 platform_name = "the Acme platform"
 platform_blurb = "A Python + React monorepo with a REST API and a Postgres store."
 principal_file = "principal.md"
+
+[[repos]]
+name = "acme-api"
+path = "~/code/acme-api"
+description = "The REST API service (Python)."
+
+[[repos]]
+name = "acme-web"
+path = "~/code/acme-web"
+description = "The React front-end."
