@@ -14,6 +14,7 @@ here. The *household he serves* arrives from the pack.
 from __future__ import annotations
 
 from pennyworth.pack import NULL_PACK, Pack
+from pennyworth.skills import core_skills
 
 # Prepended so the model leads with "I am Alfred" rather than defaulting to the
 # host coding agent's identity.
@@ -140,15 +141,17 @@ override the host's generic defaults, every turn:
 
 
 def _skills(pack: Pack) -> str:
-    """Render the Skill Library index from the pack's skills — never their bodies.
+    """Render the Skill Library index — built-in core skills plus the pack's.
 
     Only the index (when to engage each skill, and where it lives) goes in the
-    brain; Alfred reads a skill's contents on demand. Empty when the pack
-    provides no skills, so a no-pack brain has no Skill Library section at all.
+    brain; Alfred reads a skill's contents on demand. The core ships generic
+    craft skills, so the section is present even with no pack; a pack adds its
+    platform-specific skills on top.
     """
-    if not pack.skills:
+    all_skills = core_skills() + pack.skills
+    if not all_skills:
         return ""
-    rows = "\n".join(f"| {s.description} | `{s.path}` |" for s in pack.skills)
+    rows = "\n".join(f"| {s.description} | `{s.path}` |" for s in all_skills)
     return (
         "## Skill Library\n\n"
         "Your platform knowledge lives in these skills — authoritative and "

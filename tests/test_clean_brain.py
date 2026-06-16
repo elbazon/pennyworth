@@ -82,6 +82,8 @@ def test_null_brain_names_no_platform():
     brain = build_system_prompt(NULL_PACK)
     assert "across the developer's codebase and tooling" in brain
     assert "## Principal" not in brain
-    assert "## Skill Library" not in brain
     assert "## The Team" not in brain
     assert "## Repositories" not in brain
+    # Built-in craft skills are generic and DO appear with no pack attached.
+    assert "## Skill Library" in brain
+    assert "investigate.md" in brain

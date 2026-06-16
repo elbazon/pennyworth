@@ -6,7 +6,10 @@ authors = ["Haim Elbaz <haim@morning.co>"]
 license = "Apache-2.0"
 readme = "README.md"
 packages = [{ include = "pennyworth", from = "src" }]
-include = [{ path = "src/pennyworth/app/web/*", format = ["sdist", "wheel"] }]
+include = [
+    { path = "src/pennyworth/app/web/*", format = ["sdist", "wheel"] },
+    { path = "src/pennyworth/skills/*.md", format = ["sdist", "wheel"] },
+]
 
 [tool.poetry.scripts]
 alfred = "pennyworth.cli:main"

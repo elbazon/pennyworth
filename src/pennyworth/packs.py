@@ -18,33 +18,11 @@ from pathlib import Path
 
 import tomllib
 
-from pennyworth.pack import NULL_PACK, Member, Pack, Repo, Skill
+from pennyworth import skills as _skills
+from pennyworth.pack import NULL_PACK, Member, Pack, Repo
 
 MANIFEST_NAME = "pennyworth-pack.toml"
-SKILLS_DIRNAME = "skills"
 TEAM_FILENAME = "team.json"
-
-
-def _parse_frontmatter(text: str) -> tuple[str, str]:
-    """Return ``(name, description)`` from a Markdown file's frontmatter.
-
-    Only the leading ``---`` … ``---`` block is inspected, and only the ``name``
-    and ``description`` keys are read. Missing keys yield ``""``.
-    """
-    name = description = ""
-    lines = text.splitlines()
-    if not lines or lines[0].strip() != "---":
-        return name, description
-    for line in lines[1:]:
-        if line.strip() == "---":
-            break
-        key, _, value = line.partition(":")
-        key = key.strip().lower()
-        if key == "name":
-            name = value.strip()
-        elif key == "description":
-            description = value.strip()
-    return name, description
 
 
 def _load_team(pack_dir: Path) -> tuple[Member, ...]:
@@ -84,27 +62,6 @@ def _load_repos(data: dict) -> tuple[Repo, ...]:
             )
         )
     return tuple(repos)
-
-
-def _load_skills(pack_dir: Path) -> tuple[Skill, ...]:
-    """Discover ``skills/*.md`` under a pack directory, in filename order."""
-    skills_dir = pack_dir / SKILLS_DIRNAME
-    if not skills_dir.is_dir():
-        return ()
-    skills: list[Skill] = []
-    for path in sorted(skills_dir.glob("*.md")):
-        try:
-            name, description = _parse_frontmatter(path.read_text())
-        except OSError:
-            continue
-        skills.append(
-            Skill(
-                name=name or path.stem,
-                description=description or "(no description)",
-                path=str(path),
-            )
-        )
-    return tuple(skills)
 
 
 def home() -> Path:
@@ -152,7 +109,7 @@ def load_pack(path: str | Path) -> Pack:
         platform_name=str(section.get("platform_name") or "").strip(),
         platform_blurb=str(section.get("platform_blurb") or "").strip(),
         principal_block=principal_block,
-        skills=_load_skills(src),
+        skills=_skills.load_skills(src),
         team=_load_team(src),
         repos=_load_repos(data),
     )
