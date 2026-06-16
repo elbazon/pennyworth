@@ -1,6 +1,8 @@
 # Pennyworth — Architecture
 
-_Status: early. The core and the pack contract are under construction._
+_Status: v0.1.0 — runnable. The persona, the pack mechanism (identity, principal,
+skills, team, repositories), the agent runner, and a desktop app are implemented;
+the pack contract grows seam by seam._
 
 ## 1. Philosophy
 
@@ -87,15 +89,22 @@ the core is a failing build. "Looks clean" is not the bar — "greps clean" is.
 
 ## 5. Roadmap
 
-1. **Core prompt assembly behind a `Pack` interface**, with a generic default pack.
-2. **Pack manifest + loader**, and the `attach` / `detach` / `list` commands.
-3. **A reference pack** demonstrating the contract end to end.
-4. **Surfaces, voice, and execution modes** wired to the core.
-5. **Open-source hardening** — license, contribution guide, CI, first-run onboarding.
+Done in v0.1.0:
+- ✅ Core prompt assembly behind a `Pack` interface, with a generic default pack.
+- ✅ Pack manifest + loader, and `pack attach` / `detach` / `list`.
+- ✅ Seams: persona binding, principal, skills, team, repositories.
+- ✅ A reference pack (`examples/acme`) demonstrating the contract end to end.
+- ✅ The agent runner (drives the host coding agent) + CLI (`run` / `chat`).
+- ✅ A clean, unbranded desktop app (`alfred app`).
+
+Next:
+- More seams as needed (MCP "hands", CI), each gated by the clean-brain test.
+- Per-user profile (name + form of address) so the no-pack butler addresses you correctly.
+- Streaming token output in the desktop app; richer transcript/history.
+- Packaging & distribution (PyPI/release wheels), CI, contribution guide.
 
 ## 6. Open items
 
-- License copyright holder.
+- License copyright holder (the LICENSE currently credits the author + contributors).
 - Pack versioning and the core-version range a pack pins.
-- Final manifest schema (section 2 is a first cut).
-- The default, no-pack persona binding.
+- The manifest schema is a first cut and will grow with the contract.
