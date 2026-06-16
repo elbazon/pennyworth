@@ -23,7 +23,7 @@ pywebview = { version = ">=5.0", optional = true }
 app = ["pywebview"]
 
 [tool.poetry.group.dev.dependencies]
-pytest = "^8.0"
+pytest = "^9.0.3"  # >=9.0.3 fixes GHSA-6w46-j5rx-g56g (tmpdir handling)
 ruff = "^0.6"
 
 [build-system]
