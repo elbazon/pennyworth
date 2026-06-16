@@ -9,6 +9,7 @@ that path is unreliable. The request/response shape is simpler and robust.
 
 from __future__ import annotations
 
+import datetime
 import itertools
 import json
 import threading
@@ -23,6 +24,15 @@ from pennyworth import runner as _runner
 from pennyworth import skills as _skillmod
 from pennyworth.pack import Pack
 from pennyworth.profile import Profile
+
+# Curated list of known Claude models shown in the picker.  The user can type
+# any model ID the API accepts; this is just the starting set.
+_KNOWN_MODELS = [
+    "claude-opus-4-8",
+    "claude-sonnet-4-6",
+    "claude-haiku-4-5-20251001",
+    "claude-fable-5",
+]
 
 
 def _compose(messages: list[dict]) -> str:
@@ -169,6 +179,60 @@ class Bridge:
             ),
         }
 
+    def list_models(self) -> list[dict]:
+        """Models for the UI picker — ``[{id, label}]``. Curated, not exhaustive."""
+        return [{"id": m, "label": m} for m in _KNOWN_MODELS]
+
+    def get_stats(self, _home: Path | None = None) -> dict:
+        """Usage stats mined from ``~/.claude/projects/**/*.jsonl``.
+
+        Returns ``{sessions, messages, input_tokens, output_tokens, total_tokens,
+        active_days}``. Gracefully handles missing directories or malformed files.
+        Pass ``_home`` in tests to override the home directory.
+        """
+        projects = (_home or Path.home()) / ".claude" / "projects"
+        sessions = 0
+        messages = 0
+        in_tokens = 0
+        out_tokens = 0
+        days: set[str] = set()
+        for jsonl in projects.glob("**/*.jsonl") if projects.is_dir() else []:
+            sessions += 1
+            try:
+                mtime = jsonl.stat().st_mtime
+                days.add(datetime.date.fromtimestamp(mtime).isoformat())
+            except OSError:
+                pass
+            try:
+                for raw in jsonl.read_text(errors="replace").splitlines():
+                    if not raw.strip():
+                        continue
+                    try:
+                        obj = json.loads(raw)
+                    except ValueError:
+                        continue
+                    t = obj.get("type")
+                    if t in ("user", "assistant"):
+                        messages += 1
+                    if t == "assistant":
+                        usage = (
+                            (obj.get("message") or {}).get("usage")
+                            or obj.get("usage")
+                            or {}
+                        )
+                        in_tokens += int(usage.get("input_tokens") or 0)
+                        out_tokens += int(usage.get("output_tokens") or 0)
+            except OSError:
+                pass
+        return {
+            "sessions": sessions,
+            "messages": messages,
+            "input_tokens": in_tokens,
+            "output_tokens": out_tokens,
+            "total_tokens": in_tokens + out_tokens,
+            "active_days": len(days),
+        }
+
     def open_url(self, url: str) -> dict:
         """Open an http(s) URL in the user's browser.
 
@@ -206,12 +270,15 @@ class Bridge:
         reply = "".join(chunks).strip()
         return {"ok": code == 0, "text": reply or "(the agent produced no output)"}
 
-    def start(self, messages: list[dict]) -> dict:
+    def start(self, messages: list[dict], model: str | None = None) -> dict:
         """Begin a streaming turn; returns ``{"ok", "id"}``.
 
         The agent runs on a background thread, accumulating its reply into a
         server-side buffer. The UI calls :meth:`poll` to render the reply as it
         grows — request/response only, never a cross-thread event push.
+
+        ``model`` is an optional Claude model ID (e.g. ``"claude-opus-4-8"``)
+        to pass as ``--model`` to the host agent.
         """
         request = _compose(messages or [])
         if not request:
@@ -221,12 +288,12 @@ class Bridge:
         with self._lock:
             self._turns[turn_id] = turn
         worker = threading.Thread(
-            target=self._run_turn, args=(turn, request), daemon=True
+            target=self._run_turn, args=(turn, request, model), daemon=True
         )
         worker.start()
         return {"ok": True, "id": turn_id}
 
-    def _run_turn(self, turn: dict, request: str) -> None:
+    def _run_turn(self, turn: dict, request: str, model: str | None = None) -> None:
         """Drive one streaming turn on a worker thread into ``turn``'s buffer.
 
         Accumulates the structured event stream — visible text, extended
@@ -253,6 +320,7 @@ class Bridge:
                 request,
                 self._pack_provider(),
                 on_event=on_event,
+                model=model,
                 profile=self._profile_provider(),
             )
             ok = code == 0

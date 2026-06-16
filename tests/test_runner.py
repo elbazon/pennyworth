@@ -1,5 +1,7 @@
 """The agent runner: command building and process invocation."""
 
+import io
+
 import pennyworth.runner as runner
 
 
@@ -162,6 +164,50 @@ def test_parse_stream_event_ignores_noise():
     )
     assert runner.parse_stream_event("not json") is None
     assert runner.parse_stream_event("") is None
+
+
+def test_stream_events_passes_model_flag(monkeypatch):
+    """When model= is given, --model <id> appears in the argv for claude agents."""
+    captured: list[list[str]] = []
+
+    class FakeProc:
+        stdout = io.StringIO("")
+
+        def wait(self):
+            return 0
+
+    def fake_popen(cmd, **kw):
+        captured.append(list(cmd))
+        return FakeProc()
+
+    monkeypatch.setattr("pennyworth.runner.subprocess.Popen", fake_popen)
+    monkeypatch.setenv("PENNYWORTH_AGENT", "claude")
+    runner.stream_events("hi", on_event=lambda e: None, model="claude-opus-4-8")
+    assert captured, "Popen was not called"
+    assert "--model" in captured[0]
+    idx = captured[0].index("--model")
+    assert captured[0][idx + 1] == "claude-opus-4-8"
+
+
+def test_stream_events_model_ignored_for_custom_agent(monkeypatch):
+    """Non-claude agents don't receive --model (they may not understand it)."""
+    captured: list[list[str]] = []
+
+    class FakeProc:
+        stdout = io.StringIO("")
+
+        def wait(self):
+            return 0
+
+    def fake_popen(cmd, **kw):
+        captured.append(list(cmd))
+        return FakeProc()
+
+    monkeypatch.setattr("pennyworth.runner.subprocess.Popen", fake_popen)
+    monkeypatch.setenv("PENNYWORTH_AGENT", "my-custom-agent")
+    runner.stream_events("hi", on_event=lambda e: None, model="claude-opus-4-8")
+    assert captured
+    assert "--model" not in captured[0]
 
 
 def test_stream_events_collects_structured_events(tmp_path, monkeypatch):

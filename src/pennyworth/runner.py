@@ -179,6 +179,7 @@ def run(
     add_dirs: list[str] | None = None,
     allow_all: bool = False,
     extra_args: list[str] | None = None,
+    model: str | None = None,
     profile: Profile = NULL_PROFILE,
 ) -> int:
     """Assemble the brain for ``pack`` and run the host agent.
@@ -186,13 +187,16 @@ def run(
     Returns the agent's exit code, or 127 if the agent executable is missing.
     """
     system_prompt = build_system_prompt(pack, chat_mode=interactive, profile=profile)
+    model_args: list[str] = (
+        ["--model", model] if model and _speaks_claude_protocol(agent_command()) else []
+    )
     cmd = build_command(
         request,
         system_prompt,
         interactive=interactive,
         add_dirs=add_dirs,
         allow_all=allow_all,
-        extra_args=extra_args,
+        extra_args=(list(extra_args or []) + model_args) or None,
     )
     try:
         return subprocess.run(cmd).returncode
@@ -212,6 +216,7 @@ def stream_events(
     on_event: Callable[[dict], None],
     add_dirs: list[str] | None = None,
     allow_all: bool = False,
+    model: str | None = None,
     profile: Profile = NULL_PROFILE,
 ) -> int:
     """Run the host agent and deliver structured events via ``on_event``.
@@ -227,13 +232,16 @@ def stream_events(
     system_prompt = build_system_prompt(pack, chat_mode=False, profile=profile)
     agent = agent_command()
     structured = _speaks_claude_protocol(agent)
+    extra: list[str] = list(_STREAM_JSON_ARGS) if structured else []
+    if model and structured:
+        extra += ["--model", model]
     cmd = build_command(
         request,
         system_prompt,
         agent=agent,
         add_dirs=add_dirs,
         allow_all=allow_all,
-        extra_args=list(_STREAM_JSON_ARGS) if structured else None,
+        extra_args=extra or None,
     )
     try:
         proc = subprocess.Popen(
@@ -273,6 +281,7 @@ def stream(
     on_chunk: Callable[[str], None],
     add_dirs: list[str] | None = None,
     allow_all: bool = False,
+    model: str | None = None,
     profile: Profile = NULL_PROFILE,
 ) -> int:
     """Run the host agent and deliver visible reply text via ``on_chunk``.
@@ -292,5 +301,6 @@ def stream(
         on_event=on_event,
         add_dirs=add_dirs,
         allow_all=allow_all,
+        model=model,
         profile=profile,
     )

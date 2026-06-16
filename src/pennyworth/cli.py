@@ -56,6 +56,7 @@ def _cmd_run(args: argparse.Namespace) -> int:
         _packs.active_pack(),
         add_dirs=args.add_dirs,
         allow_all=args.allow_all,
+        model=getattr(args, "model", None),
         profile=_profile.active_profile(),
     )
 
@@ -67,6 +68,7 @@ def _cmd_chat(args: argparse.Namespace) -> int:
         interactive=True,
         add_dirs=args.add_dirs,
         allow_all=args.allow_all,
+        model=getattr(args, "model", None),
         profile=_profile.active_profile(),
     )
 
@@ -115,6 +117,11 @@ def _add_agent_args(parser: argparse.ArgumentParser) -> None:
         dest="add_dirs",
         metavar="PATH",
         help="extra workspace directory the agent may access (repeatable)",
+    )
+    parser.add_argument(
+        "--model",
+        metavar="MODEL",
+        help="model to use (e.g. claude-opus-4-8); defaults to the agent's own default",
     )
     parser.add_argument(
         "--dangerously-allow-all",

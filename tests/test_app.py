@@ -200,6 +200,63 @@ def test_set_profile_rejects_bad_address(tmp_path, monkeypatch):
     assert "address" in result["error"]
 
 
+def test_list_models_returns_curated_set():
+    models = _bridge().list_models()
+    assert isinstance(models, list) and len(models) >= 3
+    ids = {m["id"] for m in models}
+    assert "claude-sonnet-4-6" in ids
+    assert all("id" in m and "label" in m for m in models)
+
+
+def test_get_stats_counts_sessions_and_tokens(tmp_path):
+    import json as _json
+
+    proj = tmp_path / ".claude" / "projects" / "test-project"
+    proj.mkdir(parents=True)
+    lines = [
+        _json.dumps({"type": "user", "content": [{"type": "text", "text": "hi"}]}),
+        _json.dumps(
+            {
+                "type": "assistant",
+                "message": {"usage": {"input_tokens": 10, "output_tokens": 5}},
+            }
+        ),
+        _json.dumps({"type": "user", "content": [{"type": "text", "text": "again"}]}),
+    ]
+    (proj / "session.jsonl").write_text("\n".join(lines) + "\n")
+
+    stats = _bridge().get_stats(_home=tmp_path)
+    assert stats["sessions"] == 1
+    assert stats["messages"] == 3
+    assert stats["input_tokens"] == 10
+    assert stats["output_tokens"] == 5
+    assert stats["total_tokens"] == 15
+    assert stats["active_days"] >= 1
+
+
+def test_get_stats_empty_when_no_projects(tmp_path):
+    stats = _bridge().get_stats(_home=tmp_path)
+    assert stats == {
+        "sessions": 0,
+        "messages": 0,
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "total_tokens": 0,
+        "active_days": 0,
+    }
+
+
+def test_start_accepts_model_param(tmp_path, monkeypatch):
+    stub = tmp_path / "agent.sh"
+    stub.write_text("#!/bin/sh\necho hi\n")
+    stub.chmod(0o755)
+    monkeypatch.setenv("PENNYWORTH_AGENT", str(stub))
+    started = _bridge().start(
+        [{"role": "user", "text": "hi"}], model="claude-sonnet-4-6"
+    )
+    assert started["ok"] is True and started["id"]
+
+
 def test_about_names_alfred_and_pennyworth():
     about = _bridge().about()
     assert about["assistant"] == "Alfred"
@@ -267,6 +324,16 @@ def test_ui_has_panels():
         assert call in html, f"UI never calls {call}"
     for view in ('data-view="skills"', 'data-view="settings"', 'data-view="about"'):
         assert view in html, f"nav missing {view}"
+
+
+def test_ui_has_model_picker_and_stats():
+    """Layer-3 additions: model picker in the composer + Stats panel."""
+    html = window.index_path().read_text()
+    assert "list_models(" in html  # model picker populated from bridge
+    assert "modelSel" in html  # the select element exists
+    assert "get_stats(" in html  # Stats panel calls bridge
+    assert 'data-view="stats"' in html  # Stats nav button present
+    assert "renderStats(" in html  # the renderer is wired
 
 
 def test_portrait_asset_ships():

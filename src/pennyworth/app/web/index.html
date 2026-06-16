@@ -122,6 +122,18 @@
   .zoomrow { display: flex; align-items: center; gap: 8px; }
   .aboutface { width: 96px; height: 96px; border-radius: 50%; object-fit: cover; object-position: top center; display: block; margin: 0 0 16px; }
   .about p { line-height: 1.6; color: var(--ink); }
+
+  /* Composer control row (model picker, etc.) */
+  .ctrl { max-width: 780px; margin: 6px auto 0; padding: 0 22px; display: flex; gap: 8px; align-items: center; }
+  .ctrl select.mdl { background: var(--panel); color: var(--muted); border: 1px solid var(--line); border-radius: 7px; padding: 4px 9px; font: inherit; font-size: 12.5px; cursor: pointer; }
+  .ctrl select.mdl:hover { border-color: var(--accent); }
+  .ctrl select.mdl:focus { outline: none; border-color: var(--accent); color: var(--ink); }
+
+  /* Stats panel */
+  .statgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; margin-top: 16px; }
+  .statcard { background: var(--elev); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; }
+  .sv { font-size: 22px; font-weight: 600; color: var(--ink); }
+  .sl { font-size: 11.5px; color: var(--muted); margin-top: 4px; }
 </style>
 </head>
 <body>
@@ -138,6 +150,7 @@
         <button data-view="chat" class="on">💬 Chat</button>
         <button data-view="skills">⚡ Skills</button>
         <button data-view="settings">⚙ Settings</button>
+        <button data-view="stats">📊 Stats</button>
         <button data-view="about">ℹ About</button>
       </div>
     </aside>
@@ -149,6 +162,11 @@
           <textarea id="input" rows="1" placeholder="Ask Alfred…" autofocus></textarea>
           <button class="send" id="send" disabled>Send</button>
         </div>
+        <div class="ctrl" id="ctrl">
+          <select class="mdl" id="modelSel">
+            <option value="">— model default —</option>
+          </select>
+        </div>
         <div class="hint">Enter to send · Shift-Enter for a new line · ⌘N new chat · ⌘1–9 switch</div>
       </footer>
     </div>
@@ -158,7 +176,7 @@
   "use strict";
   let ready = false, busy = false, seq = 1;
   // chat: {id, title, messages:[{role,text,err?,model?,cost?,thinking?,steps?}],
-  //        cost, stored:bool, loaded:bool}
+  //        cost, model:str|null, stored:bool, loaded:bool}
   const chats = [];
   let activeId = null;
 
@@ -172,6 +190,7 @@
   const elPanel = document.getElementById("panel");
   const elPanelBody = document.getElementById("panelBody");
   const elComposerBar = document.getElementById("composerBar");
+  const elModelSel = document.getElementById("modelSel");
   let currentView = "chat";
 
   function api() { return window.pywebview && window.pywebview.api; }
@@ -225,14 +244,16 @@
     elMain.hidden = true; elComposerBar.hidden = true; elPanel.hidden = false;
     if (name === "skills") renderSkills();
     else if (name === "settings") renderSettings();
+    else if (name === "stats") renderStats();
     else if (name === "about") renderAbout();
   }
 
   /* ---------- chat list ---------- */
   function newChat() {
-    const c = { id: "c" + (seq++), title: "New chat", messages: [], cost: 0, stored: false, loaded: true };
+    const c = { id: "c" + (seq++), title: "New chat", messages: [], cost: 0, model: null, stored: false, loaded: true };
     chats.unshift(c);
     activeId = c.id;
+    elModelSel.value = "";
     renderChats(); renderMessages(); showChatView(); input.focus();
   }
 
@@ -246,10 +267,12 @@
           c.messages = doc.messages || [];
           c.cost = doc.cost || 0;
           c.title = doc.title || c.title;
+          c.model = doc.model || null;
         }
       } catch (e) {}
       c.loaded = true;
     }
+    elModelSel.value = (c && c.model) || "";
     renderChats(); renderMessages(); showChatView(); input.focus();
   }
 
@@ -432,6 +455,8 @@
     if (!text || busy || !ready || !c) return;
     c.messages.push({ role: "user", text });
     if (c.title === "New chat") { c.title = text.slice(0, 42); renderChats(); }
+    const model = elModelSel.value || null;
+    if (model) c.model = model;
     input.value = ""; input.style.height = "auto";
     appendUser(text);
     const refs = appendAlfred();
@@ -439,7 +464,7 @@
     setBusy(true); scrollDown();
     let saved = { role: "alfred", text: "" };
     try {
-      const started = await api().start(c.messages);
+      const started = await api().start(c.messages, model);
       if (!started || started.ok === false || !started.id) {
         refs.body.textContent = "(nothing to ask)"; refs.body.classList.add("err");
         saved = { role: "alfred", text: "(nothing to ask)", err: true };
@@ -466,7 +491,7 @@
 
   async function persist(c) {
     try {
-      await api().persist_chat(c.id, { title: c.title, messages: c.messages, cost: c.cost });
+      await api().persist_chat(c.id, { title: c.title, messages: c.messages, cost: c.cost, model: c.model || null });
       c.stored = true; c.loaded = true;
     } catch (e) {}
   }
@@ -534,6 +559,28 @@
     document.getElementById("zReset").onclick = () => applyZoom(1);
   }
 
+  function stat(label, value) {
+    return '<div class="statcard"><div class="sv">' + escapeHtml(String(value)) +
+      '</div><div class="sl">' + escapeHtml(label) + '</div></div>';
+  }
+  async function renderStats() {
+    elPanelBody.innerHTML = '<div class="panelhead">Usage</div><div class="panelsub">Loading…</div>';
+    let s = {};
+    try { s = await api().get_stats() || {}; } catch (e) {}
+    const fmt = n => (typeof n === "number") ? n.toLocaleString() : "—";
+    elPanelBody.innerHTML =
+      '<div class="panelhead">Usage</div>' +
+      '<div class="panelsub">Activity across all Claude sessions on this machine.</div>' +
+      '<div class="statgrid">' +
+        stat("Sessions", fmt(s.sessions)) +
+        stat("Messages", fmt(s.messages)) +
+        stat("Active days", fmt(s.active_days)) +
+        stat("Total tokens", fmt(s.total_tokens)) +
+        stat("Input tokens", fmt(s.input_tokens)) +
+        stat("Output tokens", fmt(s.output_tokens)) +
+      '</div>';
+  }
+
   async function renderAbout() {
     let a = {};
     try { a = await api().about() || {}; } catch (e) {}
@@ -557,7 +604,18 @@
     if (a && a.list_app_chats) {
       try {
         const rows = await a.list_app_chats();
-        (rows || []).forEach(r => chats.push({ id: r.id, title: r.title, messages: [], cost: r.cost || 0, stored: true, loaded: false }));
+        (rows || []).forEach(r => chats.push({ id: r.id, title: r.title, messages: [], cost: r.cost || 0, model: r.model || null, stored: true, loaded: false }));
+      } catch (e) {}
+    }
+    // Populate model picker
+    if (a && a.list_models) {
+      try {
+        const models = await a.list_models() || [];
+        models.forEach(m => {
+          const opt = document.createElement("option");
+          opt.value = m.id; opt.textContent = m.label;
+          elModelSel.appendChild(opt);
+        });
       } catch (e) {}
     }
     newChat();  // a fresh chat on top of any restored history
