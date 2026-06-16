@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Alfred</title>
+<style>
+  :root {
+    --bg: #262624;
+    --panel: #2f2f2c;
+    --ink: #ece9e3;
+    --muted: #9a958c;
+    --accent: #c8a96a;
+    --user: #36352f;
+    --line: #403f3a;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    background: var(--bg); color: var(--ink); font-family: var(--sans);
+    display: flex; flex-direction: column; font-size: 15px; line-height: 1.55;
+  }
+  header {
+    display: flex; align-items: center; gap: 10px;
+    padding: 14px 20px; border-bottom: 1px solid var(--line);
+  }
+  .hat { font-size: 20px; }
+  .title { font-weight: 600; letter-spacing: .2px; }
+  .sub { color: var(--muted); font-size: 12.5px; margin-left: auto; }
+  main {
+    flex: 1; overflow-y: auto; padding: 22px 0;
+  }
+  .wrap { max-width: 780px; margin: 0 auto; padding: 0 20px; }
+  .msg { margin: 0 0 18px; display: flex; }
+  .msg .bubble {
+    padding: 11px 14px; border-radius: 12px; white-space: pre-wrap;
+    word-wrap: break-word; max-width: 86%;
+  }
+  .msg.user { justify-content: flex-end; }
+  .msg.user .bubble { background: var(--user); }
+  .msg.alfred .bubble { background: var(--panel); border: 1px solid var(--line); }
+  .msg .who { font-size: 11px; color: var(--muted); margin: 0 0 4px; }
+  .msg.alfred .who { color: var(--accent); }
+  .empty { color: var(--muted); text-align: center; margin-top: 12vh; }
+  .empty .big { font-size: 30px; margin-bottom: 8px; }
+  footer { border-top: 1px solid var(--line); padding: 14px 0; }
+  .composer { max-width: 780px; margin: 0 auto; padding: 0 20px; display: flex; gap: 10px; }
+  textarea {
+    flex: 1; resize: none; background: var(--panel); color: var(--ink);
+    border: 1px solid var(--line); border-radius: 10px; padding: 11px 13px;
+    font-family: var(--sans); font-size: 15px; line-height: 1.5; max-height: 200px;
+  }
+  textarea:focus { outline: none; border-color: var(--accent); }
+  button {
+    background: var(--accent); color: #21201d; border: 0; border-radius: 10px;
+    padding: 0 18px; font-weight: 600; cursor: pointer; font-family: var(--sans);
+  }
+  button:disabled { opacity: .5; cursor: default; }
+  .mono { font-family: var(--mono); font-size: 13px; }
+  .err { color: #e0846a; }
+</style>
+</head>
+<body>
+  <header>
+    <span class="hat">🎩</span>
+    <span class="title">Alfred</span>
+    <span class="sub" id="sub">starting…</span>
+  </header>
+  <main id="main">
+    <div class="wrap" id="messages">
+      <div class="empty" id="empty">
+        <div class="big">🎩</div>
+        <div>Good day. How may I be of service?</div>
+      </div>
+    </div>
+  </main>
+  <footer>
+    <div class="composer">
+      <textarea id="input" rows="1" placeholder="Ask Alfred…" autofocus></textarea>
+      <button id="send" disabled>Send</button>
+    </div>
+  </footer>
+
+<script>
+  let ready = false;
+  let busy = false;
+  let chatId = "main";
+  let current = null; // the streaming assistant bubble element
+
+  const messages = document.getElementById("messages");
+  const empty = document.getElementById("empty");
+  const input = document.getElementById("input");
+  const sendBtn = document.getElementById("send");
+  const sub = document.getElementById("sub");
+
+  function api() { return window.pywebview && window.pywebview.api; }
+
+  function addMessage(who, text, cls) {
+    if (empty) empty.style.display = "none";
+    const msg = document.createElement("div");
+    msg.className = "msg " + (cls || who);
+    const bubble = document.createElement("div");
+    bubble.className = "bubble";
+    const label = document.createElement("div");
+    label.className = "who";
+    label.textContent = who;
+    const body = document.createElement("div");
+    body.textContent = text || "";
+    bubble.appendChild(label);
+    bubble.appendChild(body);
+    msg.appendChild(bubble);
+    messages.appendChild(msg);
+    window.scrollTo(0, document.body.scrollHeight);
+    return body;
+  }
+
+  function setBusy(state) {
+    busy = state;
+    sendBtn.disabled = state || !ready;
+  }
+
+  function send() {
+    const text = input.value.trim();
+    if (!text || busy || !ready) return;
+    addMessage("You", text, "user");
+    input.value = "";
+    input.style.height = "auto";
+    setBusy(true);
+    current = null;
+    api().send_message(chatId, text);
+  }
+
+  // Python pushes events here as a JSON string.
+  window.alfredEvent = function (jsonStr) {
+    let e;
+    try { e = JSON.parse(jsonStr); } catch (_) { return; }
+    if (e.type === "start") {
+      current = addMessage("Alfred", "", "alfred");
+    } else if (e.type === "chunk") {
+      if (!current) current = addMessage("Alfred", "", "alfred");
+      current.textContent += e.text;
+      window.scrollTo(0, document.body.scrollHeight);
+    } else if (e.type === "error") {
+      const b = addMessage("Alfred", e.text, "alfred");
+      b.className = "err";
+      setBusy(false);
+    } else if (e.type === "end") {
+      setBusy(false);
+      current = null;
+    }
+  };
+
+  function init() {
+    ready = true;
+    setBusy(false);
+    input.focus();
+    const a = api();
+    if (a && a.get_state) {
+      a.get_state().then(function (s) {
+        sub.textContent = s.pack ? ("pack: " + s.pack) : "no pack — generic";
+      });
+    }
+  }
+
+  input.addEventListener("keydown", function (ev) {
+    if (ev.key === "Enter" && !ev.shiftKey) { ev.preventDefault(); send(); }
+  });
+  input.addEventListener("input", function () {
+    input.style.height = "auto";
+    input.style.height = Math.min(input.scrollHeight, 200) + "px";
+  });
+  sendBtn.addEventListener("click", send);
+  window.addEventListener("pywebviewready", init);
+  // Fallback if the ready event already fired before this script attached.
+  if (window.pywebview && window.pywebview.api) init();
+</script>
+</body>
+</html>

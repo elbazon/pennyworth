@@ -55,3 +55,23 @@ def test_run_reports_missing_agent(monkeypatch, capsys):
     monkeypatch.setenv("PENNYWORTH_AGENT", "definitely-not-a-real-binary-xyz")
     assert runner.run("hi") == 127
     assert "not found" in capsys.readouterr().err
+
+
+def test_stream_delivers_chunks(tmp_path, monkeypatch):
+    stub = tmp_path / "agent.sh"
+    stub.write_text("#!/bin/sh\necho line-one\necho line-two\n")
+    stub.chmod(0o755)
+    monkeypatch.setenv("PENNYWORTH_AGENT", str(stub))
+
+    chunks: list[str] = []
+    assert runner.stream("hi", on_chunk=chunks.append) == 0
+    joined = "".join(chunks)
+    assert "line-one" in joined
+    assert "line-two" in joined
+
+
+def test_stream_reports_missing_agent(monkeypatch):
+    monkeypatch.setenv("PENNYWORTH_AGENT", "definitely-not-a-real-binary-xyz")
+    chunks: list[str] = []
+    assert runner.stream("hi", on_chunk=chunks.append) == 127
+    assert any("not found" in c for c in chunks)

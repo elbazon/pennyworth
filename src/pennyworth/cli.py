@@ -15,7 +15,7 @@ from pennyworth import runner as _runner
 from pennyworth.prompt import build_system_prompt
 
 # Subcommands recognised before the bare-request shorthand kicks in.
-_COMMANDS = {"pack", "prompt", "run", "chat"}
+_COMMANDS = {"pack", "prompt", "run", "chat", "app"}
 
 
 def _cmd_pack_list(_args: argparse.Namespace) -> int:
@@ -66,6 +66,12 @@ def _cmd_chat(args: argparse.Namespace) -> int:
         add_dirs=args.add_dirs,
         allow_all=args.allow_all,
     )
+
+
+def _cmd_app(_args: argparse.Namespace) -> int:
+    from pennyworth.app.window import main as app_main
+
+    return app_main()
 
 
 def _add_agent_args(parser: argparse.ArgumentParser) -> None:
@@ -119,6 +125,10 @@ def build_parser() -> argparse.ArgumentParser:
     chat.add_argument("request", nargs="*", help="optional opening message")
     _add_agent_args(chat)
     chat.set_defaults(func=_cmd_chat)
+
+    sub.add_parser("app", help="launch the desktop app (needs the 'app' extra)").set_defaults(
+        func=_cmd_app
+    )
 
     return parser
 

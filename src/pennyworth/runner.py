@@ -15,6 +15,7 @@ from __future__ import annotations
 import os
 import subprocess
 import sys
+from collections.abc import Callable
 
 from pennyworth.pack import NULL_PACK, Pack
 from pennyworth.prompt import build_system_prompt
@@ -90,3 +91,37 @@ def run(
             file=sys.stderr,
         )
         return 127
+
+
+def stream(
+    request: str,
+    pack: Pack = NULL_PACK,
+    *,
+    on_chunk: Callable[[str], None],
+    add_dirs: list[str] | None = None,
+    allow_all: bool = False,
+) -> int:
+    """Run the host agent and deliver its output incrementally via ``on_chunk``.
+
+    Used by the desktop app to render a reply as it arrives. Output is read line
+    by line (stderr folded into stdout). Returns the agent's exit code, or 127
+    if the agent executable is missing.
+    """
+    system_prompt = build_system_prompt(pack, chat_mode=False)
+    cmd = build_command(
+        request, system_prompt, add_dirs=add_dirs, allow_all=allow_all
+    )
+    try:
+        proc = subprocess.Popen(
+            cmd,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+        )
+    except FileNotFoundError:
+        on_chunk(f"[host agent not found: {cmd[0]} — set PENNYWORTH_AGENT]")
+        return 127
+    assert proc.stdout is not None
+    for line in proc.stdout:
+        on_chunk(line)
+    return proc.wait()
