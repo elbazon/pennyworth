@@ -134,6 +134,31 @@
   .statcard { background: var(--elev); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; }
   .sv { font-size: 22px; font-weight: 600; color: var(--ink); }
   .sl { font-size: 11.5px; color: var(--muted); margin-top: 4px; }
+
+  /* Slash-command autocomplete menu */
+  .slashmenu { position: fixed; background: var(--elev); border: 1px solid var(--line); border-radius: 9px; padding: 4px; z-index: 60; min-width: 270px; box-shadow: 0 10px 28px rgba(0,0,0,.5); }
+  .slashitem { display: flex; gap: 10px; align-items: baseline; padding: 7px 12px; border-radius: 6px; cursor: pointer; }
+  .slashitem:hover, .slashitem.sel { background: var(--panel); }
+  .slashitem .sn { font-family: var(--mono); font-size: 12.5px; color: var(--accent); white-space: nowrap; }
+  .slashitem .sd { font-size: 12px; color: var(--muted); }
+
+  /* File attachment chips */
+  .chips { max-width: 780px; margin: 6px auto 0; padding: 0 22px; display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip { display: flex; align-items: center; gap: 5px; background: var(--elev); border: 1px solid var(--line); border-radius: 6px; padding: 3px 8px; font-size: 12px; }
+  .chip .cn { color: var(--ink); max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .chip .cx { border: 0; background: transparent; color: var(--muted); cursor: pointer; padding: 0 2px; font-size: 14px; line-height: 1; }
+  .chip .cx:hover { color: var(--danger); }
+  button.attach { background: transparent; border: 1px solid var(--line); color: var(--muted); border-radius: 10px; width: 44px; height: 44px; font-size: 18px; cursor: pointer; flex-shrink: 0; }
+  button.attach:hover { border-color: var(--accent); color: var(--ink); }
+
+  /* Embedded PTY terminal pane */
+  .termpane { display: flex; flex-direction: column; border-top: 1px solid var(--line); background: #141412; flex-shrink: 0; }
+  .termhead { display: flex; align-items: center; gap: 8px; padding: 6px 14px; background: #1a1a18; border-bottom: 1px solid var(--line); font-size: 12.5px; color: var(--muted); user-select: none; }
+  .termhead .tt { flex: 1; }
+  .termout { overflow-y: auto; padding: 8px 14px; font-family: var(--mono); font-size: 12.5px; line-height: 1.5; white-space: pre-wrap; color: #ccc; min-height: 100px; max-height: 220px; word-break: break-all; }
+  .terminput { display: flex; border-top: 1px solid var(--line); }
+  .terminput .tprompt { padding: 6px 10px; color: var(--accent); font-family: var(--mono); font-size: 12.5px; user-select: none; }
+  .terminput input { flex: 1; background: transparent; border: 0; color: #ccc; font-family: var(--mono); font-size: 12.5px; padding: 6px 4px; outline: none; }
 </style>
 </head>
 <body>
@@ -157,15 +182,29 @@
     <div class="main">
       <main id="main"><div class="wrap" id="messages"></div></main>
       <section id="panel" class="panel" hidden><div class="wrap" id="panelBody"></div></section>
+      <div id="termPane" class="termpane" hidden>
+        <div class="termhead">
+          <span class="tt">⌥ Shell</span>
+          <button id="termClose" class="pbtn ghost" style="padding:2px 10px;font-size:11px;">✕ Close</button>
+        </div>
+        <div class="termout" id="termOut"></div>
+        <div class="terminput">
+          <span class="tprompt">$</span>
+          <input type="text" id="termIn" placeholder="type a command…" spellcheck="false" autocomplete="off" />
+        </div>
+      </div>
       <footer id="composerBar">
         <div class="composer">
           <textarea id="input" rows="1" placeholder="Ask Alfred…" autofocus></textarea>
+          <button class="attach" id="attach" title="Attach a file">📎</button>
           <button class="send" id="send" disabled>Send</button>
         </div>
+        <div class="chips" id="chips"></div>
         <div class="ctrl" id="ctrl">
           <select class="mdl" id="modelSel">
             <option value="">— model default —</option>
           </select>
+          <button class="pbtn ghost" id="termToggle" style="margin-left:auto;font-size:12px;padding:4px 10px;">⌥ Shell</button>
         </div>
         <div class="hint">Enter to send · Shift-Enter for a new line · ⌘N new chat · ⌘1–9 switch</div>
       </footer>
@@ -191,7 +230,99 @@
   const elPanelBody = document.getElementById("panelBody");
   const elComposerBar = document.getElementById("composerBar");
   const elModelSel = document.getElementById("modelSel");
+  const elChips = document.getElementById("chips");
+  const elTermPane = document.getElementById("termPane");
+  const elTermOut = document.getElementById("termOut");
+  const elTermIn = document.getElementById("termIn");
   let currentView = "chat";
+
+  /* ---------- slash-command menu ---------- */
+  const SLASH_COMMANDS = [
+    { name: "/new",      desc: "Start a new chat" },
+    { name: "/clear",    desc: "Clear the current chat" },
+    { name: "/model",    desc: "Set model — /model claude-opus-4-8" },
+    { name: "/skills",   desc: "Open Skills panel" },
+    { name: "/settings", desc: "Open Settings panel" },
+    { name: "/stats",    desc: "Open Stats panel" },
+    { name: "/about",    desc: "Open About panel" },
+  ];
+  let slashSel = 0;
+
+  function slashPrefix() {
+    const v = input.value, pos = input.selectionStart;
+    const seg = v.slice(0, pos).split(/\s/).pop();
+    return seg && seg.startsWith("/") ? seg : null;
+  }
+
+  function openSlashMenu(items) {
+    closeSlashMenu();
+    if (!items.length) return;
+    const m = document.createElement("div");
+    m.className = "slashmenu"; m.id = "slashMenu";
+    const rect = input.getBoundingClientRect();
+    m.style.left = rect.left + "px";
+    m.style.bottom = (window.innerHeight - rect.top + 6) + "px";
+    items.forEach((cmd, i) => {
+      const row = document.createElement("div");
+      row.className = "slashitem" + (i === slashSel ? " sel" : "");
+      row.innerHTML = '<span class="sn">' + escapeHtml(cmd.name) + '</span><span class="sd">' + escapeHtml(cmd.desc) + '</span>';
+      row.onclick = () => { applySlash(cmd); closeSlashMenu(); };
+      m.appendChild(row);
+    });
+    document.body.appendChild(m);
+  }
+  function closeSlashMenu() { const m = document.getElementById("slashMenu"); if (m) m.remove(); slashSel = 0; }
+
+  function applySlash(cmd) {
+    const v = input.value, pos = input.selectionStart;
+    const before = v.slice(0, pos), after = v.slice(pos);
+    const seg = before.split(/\s/).pop();
+    const stem = before.slice(0, before.length - seg.length);
+    if (cmd.name === "/new") { input.value = ""; newChat(); return; }
+    if (cmd.name === "/clear") { input.value = ""; const c = active(); if (c) { c.messages = []; renderMessages(); } return; }
+    if (["skills","settings","stats","about"].some(v => cmd.name === "/" + v)) {
+      input.value = ""; showView(cmd.name.slice(1)); return;
+    }
+    // For /model and others, insert the command name + a trailing space for the user to complete
+    input.value = stem + cmd.name + " " + after;
+    input.setSelectionRange((stem + cmd.name + " ").length, (stem + cmd.name + " ").length);
+  }
+
+  function updateSlashMenu() {
+    const prefix = slashPrefix();
+    if (!prefix) { closeSlashMenu(); return; }
+    const matches = SLASH_COMMANDS.filter(c => c.name.startsWith(prefix));
+    if (!matches.length) { closeSlashMenu(); return; }
+    slashSel = Math.min(slashSel, matches.length - 1);
+    openSlashMenu(matches);
+  }
+
+  /* ---------- file attachments ---------- */
+  const pendingFiles = []; // [{name, content}]
+
+  function renderChips() {
+    elChips.innerHTML = "";
+    pendingFiles.forEach((f, i) => {
+      const chip = document.createElement("div"); chip.className = "chip";
+      const name = document.createElement("span"); name.className = "cn"; name.textContent = "📄 " + f.name;
+      const rm = document.createElement("button"); rm.className = "cx"; rm.textContent = "×";
+      rm.onclick = () => { pendingFiles.splice(i, 1); renderChips(); };
+      chip.appendChild(name); chip.appendChild(rm);
+      elChips.appendChild(chip);
+    });
+  }
+
+  async function pickAndAttach() {
+    if (!api() || !api().pick_file) return;
+    let picked;
+    try { picked = await api().pick_file(); } catch (e) { return; }
+    if (!picked || !picked.ok) return;
+    let read;
+    try { read = await api().read_file_text(picked.path); } catch (e) { return; }
+    if (!read || !read.ok) return;
+    pendingFiles.push({ name: read.name, content: read.content, truncated: read.truncated });
+    renderChips();
+  }
 
   function api() { return window.pywebview && window.pywebview.api; }
   function active() { return chats.find(c => c.id === activeId); }
@@ -426,6 +557,52 @@
   function nearBottom() { return (window.innerHeight + window.scrollY) >= (document.body.scrollHeight - 60); }
   function scrollDown() { window.scrollTo(0, document.body.scrollHeight); }
 
+  /* ---------- PTY terminal ---------- */
+  let termActive = false, termPollTimer = null;
+
+  function stripAnsi(s) {
+    return s.replace(/\x1b\[[0-9;]*[mABCDEFGHJKLMSTabcdfghinoqrstu]/g, "")
+            .replace(/\x1b[()][AB012]/g, "")
+            .replace(/\r/g, "");
+  }
+
+  async function openTerminal() {
+    if (!api() || !api().term_open) return;
+    const c = active();
+    if (!c) return;
+    try {
+      const r = await api().term_open(c.id);
+      if (!r || !r.ok) return;
+    } catch (e) { return; }
+    termActive = true;
+    elTermPane.hidden = false;
+    elTermOut.textContent = "";
+    elTermIn.focus();
+    termPollTimer = setInterval(async () => {
+      if (!termActive || !api()) return;
+      const c2 = active(); if (!c2) return;
+      try {
+        const r = await api().term_read(c2.id);
+        if (r && r.ok && r.output) {
+          const stick = elTermOut.scrollHeight - elTermOut.scrollTop <= elTermOut.clientHeight + 20;
+          elTermOut.textContent += stripAnsi(r.output);
+          if (stick) elTermOut.scrollTop = elTermOut.scrollHeight;
+        }
+        if (r && r.closed) closeTerminal();
+      } catch (e) {}
+    }, 100);
+  }
+
+  async function closeTerminal() {
+    if (termPollTimer) { clearInterval(termPollTimer); termPollTimer = null; }
+    termActive = false;
+    elTermPane.hidden = true;
+    const c = active();
+    if (c && api() && api().term_close) {
+      try { await api().term_close(c.id); } catch (e) {}
+    }
+  }
+
   /* ---------- send / stream ---------- */
   function streamTurn(id, refs) {
     return new Promise((resolve, reject) => {
@@ -453,7 +630,16 @@
     const text = input.value.trim();
     const c = active();
     if (!text || busy || !ready || !c) return;
-    c.messages.push({ role: "user", text });
+    // Inject any pending file attachments as context blocks ahead of the message.
+    let fullText = text;
+    if (pendingFiles.length) {
+      const blocks = pendingFiles.map(f =>
+        "[File: " + f.name + (f.truncated ? " (truncated)" : "") + "]\n---\n" + f.content + "\n---"
+      ).join("\n\n");
+      fullText = blocks + "\n\n" + text;
+      pendingFiles.splice(0); renderChips();
+    }
+    c.messages.push({ role: "user", text: fullText });
     if (c.title === "New chat") { c.title = text.slice(0, 42); renderChats(); }
     const model = elModelSel.value || null;
     if (model) c.model = model;
@@ -629,8 +815,44 @@
   document.getElementById("newchat").addEventListener("click", newChat);
   elNav.querySelectorAll("button").forEach(b => b.addEventListener("click", () => showView(b.dataset.view)));
   sendBtn.addEventListener("click", send);
-  input.addEventListener("keydown", ev => { if (ev.key === "Enter" && !ev.shiftKey) { ev.preventDefault(); send(); } });
-  input.addEventListener("input", () => { input.style.height = "auto"; input.style.height = Math.min(input.scrollHeight, 200) + "px"; });
+  document.getElementById("attach").addEventListener("click", pickAndAttach);
+  document.getElementById("termToggle").addEventListener("click", () => { if (termActive) closeTerminal(); else openTerminal(); });
+  document.getElementById("termClose").addEventListener("click", closeTerminal);
+  elTermIn.addEventListener("keydown", async (ev) => {
+    if (!termActive || !api()) return;
+    const c = active(); if (!c) return;
+    if (ev.key === "Enter") {
+      ev.preventDefault();
+      const line = elTermIn.value;
+      elTermIn.value = "";
+      try { await api().term_write(c.id, line + "\n"); } catch (e) {}
+    } else if (ev.key === "c" && ev.ctrlKey) {
+      ev.preventDefault();
+      try { await api().term_write(c.id, "\x03"); } catch (e) {}
+    }
+  });
+  input.addEventListener("keydown", ev => {
+    // Slash-menu navigation
+    const menu = document.getElementById("slashMenu");
+    if (menu) {
+      const items = menu.querySelectorAll(".slashitem");
+      if (ev.key === "ArrowDown") { ev.preventDefault(); slashSel = (slashSel + 1) % items.length; items.forEach((el, i) => el.classList.toggle("sel", i === slashSel)); return; }
+      if (ev.key === "ArrowUp") { ev.preventDefault(); slashSel = (slashSel + items.length - 1) % items.length; items.forEach((el, i) => el.classList.toggle("sel", i === slashSel)); return; }
+      if (ev.key === "Escape") { closeSlashMenu(); return; }
+      if (ev.key === "Tab" || ev.key === "Enter") {
+        const prefix = slashPrefix();
+        if (prefix) {
+          const matches = SLASH_COMMANDS.filter(c => c.name.startsWith(prefix));
+          if (matches[slashSel]) { ev.preventDefault(); applySlash(matches[slashSel]); closeSlashMenu(); return; }
+        }
+      }
+    }
+    if (ev.key === "Enter" && !ev.shiftKey) { ev.preventDefault(); send(); }
+  });
+  input.addEventListener("input", () => {
+    input.style.height = "auto"; input.style.height = Math.min(input.scrollHeight, 200) + "px";
+    updateSlashMenu();
+  });
 
   document.addEventListener("keydown", ev => {
     if (!(ev.metaKey || ev.ctrlKey)) return;

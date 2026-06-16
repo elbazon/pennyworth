@@ -326,6 +326,29 @@ def test_ui_has_panels():
         assert view in html, f"nav missing {view}"
 
 
+def test_read_file_text_returns_content(tmp_path):
+    f = tmp_path / "notes.txt"
+    f.write_text("Good day, sir.\n")
+    r = _bridge().read_file_text(str(f))
+    assert r["ok"] is True
+    assert r["name"] == "notes.txt"
+    assert r["content"] == "Good day, sir.\n"
+    assert r["truncated"] is False
+
+
+def test_read_file_text_truncates_large_files(tmp_path):
+    f = tmp_path / "big.bin"
+    f.write_bytes(b"x" * 600_000)
+    r = _bridge().read_file_text(str(f), max_bytes=100)
+    assert r["ok"] is True
+    assert len(r["content"]) == 100
+    assert r["truncated"] is True
+
+
+def test_read_file_text_missing_file():
+    assert _bridge().read_file_text("/no/such/file/abc.txt")["ok"] is False
+
+
 def test_ui_has_model_picker_and_stats():
     """Layer-3 additions: model picker in the composer + Stats panel."""
     html = window.index_path().read_text()
@@ -334,6 +357,31 @@ def test_ui_has_model_picker_and_stats():
     assert "get_stats(" in html  # Stats panel calls bridge
     assert 'data-view="stats"' in html  # Stats nav button present
     assert "renderStats(" in html  # the renderer is wired
+
+
+def test_ui_has_slash_commands():
+    html = window.index_path().read_text()
+    assert "SLASH_COMMANDS" in html
+    assert "slashMenu" in html
+    assert "updateSlashMenu(" in html
+
+
+def test_ui_has_file_attachments():
+    html = window.index_path().read_text()
+    assert "pick_file(" in html
+    assert "read_file_text(" in html
+    assert "chips" in html  # chip row for pending attachments
+    assert "pendingFiles" in html
+
+
+def test_ui_has_terminal():
+    html = window.index_path().read_text()
+    assert "term_open(" in html
+    assert "term_write(" in html
+    assert "term_read(" in html
+    assert "term_close(" in html
+    assert "termPane" in html
+    assert "stripAnsi(" in html
 
 
 def test_portrait_asset_ships():

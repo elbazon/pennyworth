@@ -22,6 +22,7 @@ from pennyworth import packs as _packs
 from pennyworth import profile as _profile
 from pennyworth import runner as _runner
 from pennyworth import skills as _skillmod
+from pennyworth.app.terminal import TermManager
 from pennyworth.pack import Pack
 from pennyworth.profile import Profile
 
@@ -113,6 +114,7 @@ class Bridge:
         self._turns: dict[str, dict] = {}
         self._lock = threading.Lock()
         self._ids = itertools.count(1)
+        self._term_mgr = TermManager()
 
     # --- methods callable from JS via window.pywebview.api.* ---
 
@@ -347,6 +349,73 @@ class Bridge:
             if turn["done"]:
                 self._turns.pop(turn_id, None)
         return snapshot
+
+    # --- file attachments ---
+
+    def pick_file(self) -> dict:
+        """Open a native file picker (pywebview dialog).
+
+        Returns ``{ok, name, path}`` on success, or ``{ok: False, error}`` when
+        the picker is unavailable (headless/test mode) or the user cancels.
+        """
+        try:
+            import webview  # lazy — not installed in the CI/test environment
+
+            wins = webview.windows
+        except (ImportError, AttributeError):
+            return {"ok": False, "error": "file picker not available (headless mode)"}
+        if not wins:
+            return {"ok": False, "error": "no window"}
+        result = wins[0].create_file_dialog(
+            dialog_type=webview.OPEN_DIALOG,
+            allow_multiple=False,
+            file_types=("All files (*.*)",),
+        )
+        if not result:
+            return {"ok": False, "error": "cancelled"}
+        path = Path(result[0])
+        return {"ok": True, "name": path.name, "path": str(path)}
+
+    def read_file_text(self, path: str, max_bytes: int = 524288) -> dict:
+        """Read a text file and return its content (up to ``max_bytes``).
+
+        Returns ``{ok, name, content, truncated}`` or ``{ok: False, error}``.
+        Decodes as UTF-8 with replacement for non-decodable bytes.
+        """
+        try:
+            p = Path(path)
+            size = p.stat().st_size
+            raw = p.read_bytes()[:max_bytes]
+            return {
+                "ok": True,
+                "name": p.name,
+                "content": raw.decode("utf-8", errors="replace"),
+                "truncated": size > max_bytes,
+            }
+        except OSError as exc:
+            return {"ok": False, "error": str(exc)}
+
+    # --- PTY terminal sessions ---
+
+    def term_open(self, term_id: str, cols: int = 120, rows: int = 30) -> dict:
+        """Open (or reuse) a PTY-backed shell session identified by ``term_id``."""
+        return self._term_mgr.open(term_id, cols=cols, rows=rows)
+
+    def term_write(self, term_id: str, data: str) -> dict:
+        """Write ``data`` to the PTY stdin of ``term_id``."""
+        return self._term_mgr.write(term_id, data)
+
+    def term_read(self, term_id: str) -> dict:
+        """Drain buffered PTY output for ``term_id``; returns ``{ok, output, closed}``."""
+        return self._term_mgr.read(term_id)
+
+    def term_resize(self, term_id: str, cols: int, rows: int) -> dict:
+        """Resize the PTY window for ``term_id``."""
+        return self._term_mgr.resize(term_id, cols, rows)
+
+    def term_close(self, term_id: str) -> dict:
+        """Kill and remove the terminal session for ``term_id``."""
+        return self._term_mgr.close(term_id)
 
     # --- persisted GUI chats (survive a restart) ---
 
