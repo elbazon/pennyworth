@@ -109,6 +109,19 @@ def _config_path() -> Path:
     return home() / "config.toml"
 
 
+def _load_block(src: Path, section: dict, key: str) -> str:
+    """Read the Markdown file the manifest's ``[pack].<key>`` points to.
+
+    Returns the file's stripped contents, or ``""`` when the key is unset or the
+    file is missing. Used for the verbatim-block seams (principal, attribution).
+    """
+    filename = section.get(key)
+    if not filename:
+        return ""
+    path = src / filename
+    return path.read_text().strip() if path.is_file() else ""
+
+
 def load_pack(path: str | Path) -> Pack:
     """Load a :class:`Pack` from a directory containing a manifest.
 
@@ -127,18 +140,12 @@ def load_pack(path: str | Path) -> Pack:
     if not name:
         raise ValueError(f"{manifest}: [pack].name is required")
 
-    principal_block = ""
-    principal_file = section.get("principal_file")
-    if principal_file:
-        principal_path = src / principal_file
-        if principal_path.is_file():
-            principal_block = principal_path.read_text().strip()
-
     return Pack(
         name=name,
         platform_name=str(section.get("platform_name") or "").strip(),
         platform_blurb=str(section.get("platform_blurb") or "").strip(),
-        principal_block=principal_block,
+        principal_block=_load_block(src, section, "principal_file"),
+        attribution_block=_load_block(src, section, "attribution_file"),
         skills=_skills.load_skills(src),
         team=_load_team(src),
         repos=_load_repos(data),

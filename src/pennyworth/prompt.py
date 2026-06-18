@@ -295,7 +295,11 @@ def build_system_prompt(
             f"## Session Type\n\n{session}",
             _output_formatting(),
             _rules(),
-            _counter_defaults(),
         ]
     )
+    # A platform's own attribution/identity policy augments the generic rules,
+    # so it sits right after them. Injected verbatim; absent when the pack omits it.
+    if pack.attribution_block:
+        parts.append(pack.attribution_block)
+    parts.append(_counter_defaults())
     return PERSONALITY_PREFIX + "\n\n".join(parts)

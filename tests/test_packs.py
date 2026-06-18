@@ -17,6 +17,16 @@ def test_load_example_pack():
     assert pack.is_attached
 
 
+def test_load_example_pack_reads_attribution():
+    """The [pack].attribution_file block loads and reaches the brain verbatim."""
+    pack = packs.load_pack(EXAMPLE)
+    assert "## Attribution & Identity" in pack.attribution_block
+    assert "acme-bot" in pack.attribution_block
+    brain = build_system_prompt(pack)
+    assert "## Attribution & Identity" in brain
+    assert "acme-bot" in brain
+
+
 def test_load_example_pack_reads_hands():
     """The manifest's [[hands]] array loads into the pack and reaches the brain."""
     pack = packs.load_pack(EXAMPLE)

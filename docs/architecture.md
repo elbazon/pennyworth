@@ -54,6 +54,10 @@ Implemented seams a pack can declare today:
   a domain; the brain renders an index, never the contents.
 - **Team & principal** — the `team.json` roster, and optionally a *principal*: a primary user
   the assistant treats specially (a private overlay, kept in the pack).
+- **Attribution & identity** — an optional verbatim block (`[pack].attribution_file`) stating the
+  platform's commit/PR attribution and identity policy: which bot identity to author commits as,
+  how to credit the requester, cloud-profile conventions. Injected as-is after the generic Rules
+  (which already carry a default attribution rule); absent when the pack omits it.
 - **Hands (MCP)** — the `[[hands]]` array of MCP tool servers the assistant operates the platform
   through. This is the boundary the core talks across, so **the core never imports platform
   tooling** — the load-bearing seam the two-layer design is named for. Two halves, both shipped:
@@ -65,10 +69,9 @@ Implemented seams a pack can declare today:
       not auto-wired). Transport fields are never rendered into the brain; secrets stay in the
       host environment, never in a manifest.
 
-Designed but **not yet built** (no manifest surface, no loader) — each gated by the clean-brain
-test when it lands:
+Designed but **not yet built** (no manifest surface, no loader) — gated by the clean-brain test
+when it lands:
 - **CI** — the provider and configuration for build/deploy diagnosis.
-- **Identity** — bot commit identity and cloud profile names.
 
 ## 3. Attach / detach
 
@@ -107,7 +110,7 @@ the core is a failing build. "Looks clean" is not the bar — "greps clean" is.
 Done in v0.1.0:
 - ✅ Core prompt assembly behind a `Pack` interface, with a generic default pack.
 - ✅ Pack manifest + loader, and `pack attach` / `detach` / `list`.
-- ✅ Seams: persona binding, principal, skills, team, repositories.
+- ✅ Seams: persona binding, principal, skills, team, repositories, attribution/identity.
 - ✅ A reference pack (`examples/acme`) demonstrating the contract end to end.
 - ✅ The agent runner (drives the host coding agent) + CLI (`run` / `chat`).
 - ✅ A clean, unbranded desktop app (`alfred app`): streaming token output,
@@ -122,9 +125,12 @@ Done in v0.1.0:
   or remote `url`) are wired live into a Claude-protocol host agent via
   `--mcp-config` — gated like `--model`, so a custom `PENNYWORTH_AGENT` gets the
   index without the flag. The core never imports platform tooling.
+- ✅ The **Attribution & identity** seam: a pack's `[pack].attribution_file` block
+  (bot commit identity, requester credit, cloud-profile conventions) is injected
+  verbatim after the generic Rules, gated by the clean-brain test.
 
 Next:
-- The remaining seams (CI, identity), each gated by the clean-brain test.
+- The **CI** seam (provider + build/deploy config), gated by the clean-brain test.
 - Packaging & distribution (PyPI/release wheels), contribution guide.
 
 ## 6. Open items

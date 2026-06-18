@@ -133,6 +133,13 @@ class Pack:
             *principal* — a primary user Alfred treats specially. Packs may
             keep this private; the core only injects whatever string it is
             given, and injects nothing when it is empty.
+        attribution_block: An optional, verbatim Markdown block stating the
+            platform's commit/PR *attribution and identity* policy — which bot
+            identity to author commits as, how to credit the requester, any
+            cloud-profile conventions. Injected as-is (it carries its own
+            heading) and nothing when empty, exactly like ``principal_block``.
+            The generic core ships a sensible default attribution rule; this
+            seam lets a platform state its own on top.
         skills: The pack's on-demand reference documents. The brain renders an
             index of these (never their contents); empty means no Skill Library
             section at all.
@@ -148,6 +155,7 @@ class Pack:
     platform_name: str = ""
     platform_blurb: str = ""
     principal_block: str = ""
+    attribution_block: str = ""
     skills: tuple[Skill, ...] = ()
     team: tuple[Member, ...] = ()
     repos: tuple[Repo, ...] = ()

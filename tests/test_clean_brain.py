@@ -20,6 +20,7 @@ _SENTINELS = {
     "platform_name": "the ACME-PLATFORM-SENTINEL",
     "platform_blurb": "It runs the EXAMPLE-STACK-SENTINEL end to end.",
     "principal_block": "## Principal\nThe EXAMPLE-PRINCIPAL-SENTINEL, served specially.",
+    "attribution_block": "## Attribution\nCommit as EXAMPLE-BOT-SENTINEL.",
 }
 _SKILL = Skill(
     name="sentinel",
@@ -87,6 +88,7 @@ def test_null_brain_names_no_platform():
     brain = build_system_prompt(NULL_PACK)
     assert "across the developer's codebase and tooling" in brain
     assert "## Principal" not in brain
+    assert "## Attribution" not in brain
     assert "## The Team" not in brain
     assert "## Repositories" not in brain
     assert "## Hands (MCP)" not in brain
