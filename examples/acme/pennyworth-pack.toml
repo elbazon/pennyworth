@@ -17,13 +17,28 @@ name = "acme-web"
 path = "~/code/acme-web"
 description = "The React front-end."
 
-# Hands (MCP): the tool servers Alfred operates the platform through. Brain-only
-# for now — the index tells Alfred when to reach for each; wiring them live into
-# the host agent is a later step.
+# Hands (MCP): the tool servers Alfred operates the platform through. The index
+# (name + summary) tells Alfred when to reach for each; the transport fields make
+# the server live — the runner wires them into a Claude-protocol host agent via
+# --mcp-config. Secrets are NOT declared here: the server inherits the host
+# process environment, so tokens (e.g. GITHUB_TOKEN) live in your shell env.
+
+# A stdio server — the agent spawns `command` with `args`.
 [[hands]]
 name = "github"
 summary = "Pull requests, issues, and CI status — reach for it for any repo or review work."
+command = "npx"
+args = ["-y", "@modelcontextprotocol/server-github"]
 
+# A remote server — set `url` (and optional `transport` = "http" | "sse").
+[[hands]]
+name = "acme-internal"
+summary = "The Acme platform's own MCP tools — deploys, feature flags, service status."
+url = "https://mcp.acme.example/sse"
+transport = "sse"
+
+# A brain-only hand is still valid: name + summary, no transport. Alfred knows it
+# exists and when to use it, but the runner does not auto-wire it.
 [[hands]]
 name = "postgres"
 summary = "Read-only queries against the Acme store — use it to confirm data shape before changing code."

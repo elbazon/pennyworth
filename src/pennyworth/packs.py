@@ -65,7 +65,12 @@ def _load_repos(data: dict) -> tuple[Repo, ...]:
 
 
 def _load_hands(data: dict) -> tuple[Hand, ...]:
-    """Read the manifest's top-level ``[[hands]]`` array of ``{name, summary}``."""
+    """Read the manifest's top-level ``[[hands]]`` array.
+
+    Each entry: ``{name, summary}`` plus optional transport — ``command``/``args``
+    (stdio) or ``url``/``transport`` (remote). Transport fields are absent on a
+    brain-only hand, which is valid.
+    """
     hands: list[Hand] = []
     for entry in data.get("hands") or []:
         if not isinstance(entry, dict):
@@ -73,7 +78,19 @@ def _load_hands(data: dict) -> tuple[Hand, ...]:
         name = str(entry.get("name") or "").strip()
         if not name:
             continue
-        hands.append(Hand(name=name, summary=str(entry.get("summary") or "").strip()))
+        args = tuple(
+            str(a) for a in (entry.get("args") or []) if str(a).strip()
+        )
+        hands.append(
+            Hand(
+                name=name,
+                summary=str(entry.get("summary") or "").strip(),
+                command=str(entry.get("command") or "").strip(),
+                args=args,
+                url=str(entry.get("url") or "").strip(),
+                transport=str(entry.get("transport") or "").strip(),
+            )
+        )
     return tuple(hands)
 
 

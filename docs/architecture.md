@@ -54,12 +54,16 @@ Implemented seams a pack can declare today:
   a domain; the brain renders an index, never the contents.
 - **Team & principal** — the `team.json` roster, and optionally a *principal*: a primary user
   the assistant treats specially (a private overlay, kept in the pack).
-- **Hands (MCP)** — the `[[hands]]` array of MCP tool servers (`name`, `summary`) the assistant
-  operates the platform through. This is the boundary the core talks across, so **the core never
-  imports platform tooling** — the load-bearing seam the two-layer design is named for.
-  **Brain-only today:** the brain renders an *index* (which servers exist, when to reach for
-  each); Alfred invokes them via the host agent's MCP tools. Wiring a declared server live into
-  the host agent is a separate, later step (see §5).
+- **Hands (MCP)** — the `[[hands]]` array of MCP tool servers the assistant operates the platform
+  through. This is the boundary the core talks across, so **the core never imports platform
+  tooling** — the load-bearing seam the two-layer design is named for. Two halves, both shipped:
+    - *Index* (`name`, `summary`) — rendered into the brain so Alfred knows which servers exist
+      and when to reach for each.
+    - *Transport* (stdio `command`/`args`, or remote `url`/`transport`) — when present, the
+      runner wires the server **live** into a Claude-protocol host agent via `--mcp-config`, so
+      its tools are callable. A hand with only `name` + `summary` stays brain-only (documented,
+      not auto-wired). Transport fields are never rendered into the brain; secrets stay in the
+      host environment, never in a manifest.
 
 Designed but **not yet built** (no manifest surface, no loader) — each gated by the clean-brain
 test when it lands:
@@ -113,14 +117,13 @@ Done in v0.1.0:
 - ✅ Per-user profile (name + form of address) so the no-pack butler addresses
   you correctly — host config under `PENNYWORTH_HOME`, not a pack (`alfred profile`).
 - ✅ CI: ruff + the test suite on every push/PR across Python 3.11–3.13.
-- ✅ The **Hands (MCP)** seam, brain-only: a pack's `[[hands]]` index reaches the
-  brain (which tool servers exist, when to reach for each), gated by the
-  clean-brain test. The core never imports platform tooling.
+- ✅ The **Hands (MCP)** seam, both halves: a pack's `[[hands]]` index reaches the
+  brain (gated by the clean-brain test), and *wireable* hands (stdio `command`/`args`
+  or remote `url`) are wired live into a Claude-protocol host agent via
+  `--mcp-config` — gated like `--model`, so a custom `PENNYWORTH_AGENT` gets the
+  index without the flag. The core never imports platform tooling.
 
 Next:
-- **Wire the Hands seam live** — configure the host agent from a pack's declared
-  MCP servers so their tools are callable, not just indexed. This is the seam's
-  transport half; the contract surface and index already ship.
 - The remaining seams (CI, identity), each gated by the clean-brain test.
 - Packaging & distribution (PyPI/release wheels), contribution guide.
 

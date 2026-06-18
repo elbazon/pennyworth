@@ -139,6 +139,30 @@ def parse_stream_event(line: str) -> dict | None:
     return None
 
 
+def build_mcp_config(pack: Pack) -> dict | None:
+    """Shape a pack's *wireable* hands into the Claude ``--mcp-config`` payload.
+
+    Returns ``{"mcpServers": {name: spec, ...}}`` for every hand that carries
+    transport (stdio ``command`` or remote ``url``), or ``None`` when the pack
+    has no wireable hands — brain-only hands (name + summary) contribute nothing
+    here, only to the prompt index. Pure and testable.
+
+    The server spec follows the Claude CLI's MCP schema: a stdio server is
+    ``{"command", "args"?}``; a remote server is ``{"type", "url"}`` where type
+    is the hand's ``transport`` or ``"http"`` by default.
+    """
+    servers: dict[str, dict] = {}
+    for hand in pack.hands:
+        if hand.command:
+            spec: dict = {"command": hand.command}
+            if hand.args:
+                spec["args"] = list(hand.args)
+            servers[hand.name] = spec
+        elif hand.url:
+            servers[hand.name] = {"type": hand.transport or "http", "url": hand.url}
+    return {"mcpServers": servers} if servers else None
+
+
 def build_command(
     request: str,
     system_prompt: str,
@@ -147,6 +171,7 @@ def build_command(
     interactive: bool = False,
     add_dirs: list[str] | None = None,
     allow_all: bool = False,
+    mcp_config: str | None = None,
     extra_args: list[str] | None = None,
 ) -> list[str]:
     """Build the host-agent argv. Pure and testable.
@@ -154,13 +179,17 @@ def build_command(
     One-shot requests use print mode (``-p``); interactive sessions seed the
     conversation with the request when one is given. ``allow_all`` opts into the
     host's "skip permission prompts" mode — off by default, since the core
-    should not silently grant a coding agent unfettered access.
+    should not silently grant a coding agent unfettered access. ``mcp_config``,
+    when given, is passed verbatim as ``--mcp-config`` (a JSON string) to add the
+    pack's MCP "hands" to the agent's existing servers (not replace them).
     """
     cmd = [agent or agent_command(), "--append-system-prompt", system_prompt]
     for directory in add_dirs or []:
         cmd += ["--add-dir", directory]
     if allow_all:
         cmd.append("--dangerously-skip-permissions")
+    if mcp_config:
+        cmd += ["--mcp-config", mcp_config]
     if extra_args:
         cmd += list(extra_args)
     if interactive:
@@ -169,6 +198,19 @@ def build_command(
     else:
         cmd += ["-p", request]
     return cmd
+
+
+def _mcp_config_arg(pack: Pack, structured: bool) -> str | None:
+    """The ``--mcp-config`` JSON string for ``pack``'s hands, or ``None``.
+
+    Gated on ``structured`` (the host speaks the Claude protocol): MCP wiring is
+    Claude-CLI-specific, so a custom ``PENNYWORTH_AGENT`` gets the brain-only
+    index without the flag, exactly as ``--model`` and the stream flags are gated.
+    """
+    if not structured:
+        return None
+    config = build_mcp_config(pack)
+    return json.dumps(config) if config else None
 
 
 def run(
@@ -188,15 +230,15 @@ def run(
     Returns the agent's exit code, or 127 if the agent executable is missing.
     """
     system_prompt = build_system_prompt(pack, chat_mode=interactive, profile=profile)
-    model_args: list[str] = (
-        ["--model", model] if model and _speaks_claude_protocol(agent_command()) else []
-    )
+    structured = _speaks_claude_protocol(agent_command())
+    model_args: list[str] = ["--model", model] if model and structured else []
     cmd = build_command(
         request,
         system_prompt,
         interactive=interactive,
         add_dirs=add_dirs,
         allow_all=allow_all,
+        mcp_config=_mcp_config_arg(pack, structured),
         extra_args=(list(extra_args or []) + model_args) or None,
     )
     try:
@@ -243,6 +285,7 @@ def stream_events(
         agent=agent,
         add_dirs=add_dirs,
         allow_all=allow_all,
+        mcp_config=_mcp_config_arg(pack, structured),
         extra_args=extra or None,
     )
     try:

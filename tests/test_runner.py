@@ -3,6 +3,7 @@
 import io
 
 import pennyworth.runner as runner
+from pennyworth.pack import Hand, Pack
 
 
 def test_build_command_print_mode():
@@ -208,6 +209,79 @@ def test_stream_events_model_ignored_for_custom_agent(monkeypatch):
     runner.stream_events("hi", on_event=lambda e: None, model="claude-opus-4-8")
     assert captured
     assert "--model" not in captured[0]
+
+
+def test_build_mcp_config_shapes_stdio_and_remote_hands():
+    pack = Pack(
+        name="p",
+        hands=(
+            Hand(name="gh", command="npx", args=("-y", "server-github")),
+            Hand(name="remote", url="https://mcp.example/sse", transport="sse"),
+            Hand(name="http", url="https://mcp.example/h"),  # defaults to http
+        ),
+    )
+    config = runner.build_mcp_config(pack)
+    assert config == {
+        "mcpServers": {
+            "gh": {"command": "npx", "args": ["-y", "server-github"]},
+            "remote": {"type": "sse", "url": "https://mcp.example/sse"},
+            "http": {"type": "http", "url": "https://mcp.example/h"},
+        }
+    }
+
+
+def test_build_mcp_config_skips_brain_only_hands():
+    """A hand with only name + summary contributes no server (and yields None)."""
+    pack = Pack(name="p", hands=(Hand(name="doc", summary="indexed, not wired"),))
+    assert runner.build_mcp_config(pack) is None
+
+
+def test_build_mcp_config_none_when_no_hands():
+    assert runner.build_mcp_config(Pack(name="p")) is None
+
+
+def test_stream_events_wires_mcp_config_for_claude(monkeypatch):
+    """Wireable hands become --mcp-config JSON in the argv for claude agents."""
+    import json
+
+    captured: list[list[str]] = []
+
+    class FakeProc:
+        stdout = io.StringIO("")
+
+        def wait(self):
+            return 0
+
+    monkeypatch.setattr(
+        "pennyworth.runner.subprocess.Popen",
+        lambda cmd, **kw: captured.append(list(cmd)) or FakeProc(),
+    )
+    monkeypatch.setenv("PENNYWORTH_AGENT", "claude")
+    pack = Pack(name="p", hands=(Hand(name="gh", command="npx", args=("server",)),))
+    runner.stream_events("hi", pack, on_event=lambda e: None)
+    assert captured and "--mcp-config" in captured[0]
+    payload = json.loads(captured[0][captured[0].index("--mcp-config") + 1])
+    assert payload["mcpServers"]["gh"] == {"command": "npx", "args": ["server"]}
+
+
+def test_stream_events_no_mcp_config_for_custom_agent(monkeypatch):
+    """Non-claude agents get the brain-only index, never the Claude-specific flag."""
+    captured: list[list[str]] = []
+
+    class FakeProc:
+        stdout = io.StringIO("")
+
+        def wait(self):
+            return 0
+
+    monkeypatch.setattr(
+        "pennyworth.runner.subprocess.Popen",
+        lambda cmd, **kw: captured.append(list(cmd)) or FakeProc(),
+    )
+    monkeypatch.setenv("PENNYWORTH_AGENT", "my-custom-agent")
+    pack = Pack(name="p", hands=(Hand(name="gh", command="npx"),))
+    runner.stream_events("hi", pack, on_event=lambda e: None)
+    assert captured and "--mcp-config" not in captured[0]
 
 
 def test_stream_events_passes_cwd(tmp_path, monkeypatch):

@@ -73,20 +73,44 @@ class Repo:
 class Hand:
     """An MCP tool server a pack gives Alfred — his "hands" on the platform.
 
-    The brain only *indexes* hands: it tells Alfred which tool servers exist and
-    when to reach for each, so he invokes the host agent's MCP tools at the
-    moment a task matches. The core never imports platform tooling — this is the
-    boundary it talks across (design principle #2). Wiring a declared server into
-    the host agent so its tools are live is a separate, later step; this seam is
-    the contract surface and the index, not the transport.
+    The brain only *indexes* hands — ``name`` and ``summary``: it tells Alfred
+    which tool servers exist and when to reach for each. The core never imports
+    platform tooling — this is the boundary it talks across (design principle
+    #2); Alfred invokes the servers through the host agent's own MCP machinery.
+
+    The transport fields below are how a hand becomes *live* rather than merely
+    indexed: when present, the runner wires the server into a Claude-protocol
+    host agent (via ``--mcp-config``) so its tools are callable. They are never
+    rendered into the brain. A hand with only ``name`` + ``summary`` is valid and
+    stays brain-only (documented but not auto-wired).
+
+    Two transports are supported:
+      * **stdio** — set ``command`` (and optional ``args``); the agent spawns it.
+      * **remote** — set ``url`` (and optional ``transport`` = ``"http"`` |
+        ``"sse"``, default ``"http"``).
+    Secrets are not declared here: the spawned server inherits the host process
+    environment, so tokens live in the host env, never in a pack manifest.
 
     Attributes:
         name: How the tool server is referred to (e.g. ``"teamcity"``).
         summary: One line on what it gives Alfred hands on — when to reach for it.
+        command: For a stdio server, the executable to spawn (e.g. ``"npx"``).
+        args: Arguments passed to ``command``.
+        url: For a remote server, its endpoint URL.
+        transport: Remote transport hint — ``"http"`` (default) or ``"sse"``.
     """
 
     name: str
     summary: str = ""
+    command: str = ""
+    args: tuple[str, ...] = ()
+    url: str = ""
+    transport: str = ""
+
+    @property
+    def is_wireable(self) -> bool:
+        """True when the hand carries enough to wire a live server (not brain-only)."""
+        return bool(self.command or self.url)
 
 
 @dataclass(frozen=True)

@@ -102,18 +102,21 @@ def test_resize_unknown_term(mgr):
 # --- read returns closed flag when shell exits ---
 
 
-def test_read_reports_closed_after_exit(mgr):
+def test_read_reports_closed_after_exit(mgr, monkeypatch):
+    # Pin a minimal shell: `/bin/sh -i` starts and exits near-instantly, so the
+    # test exercises close-detection without depending on a heavyweight
+    # interactive shell's startup cost (which flakes under full-suite load).
+    monkeypatch.setenv("SHELL", "/bin/sh")
     mgr.open("t1")
     _poll(lambda: mgr.read("t1")["output"])  # drain prompt
     mgr.write("t1", "exit\n")
-    # This waits on a real interactive shell to exit and the drain thread to
-    # observe EOF — genuinely asynchronous. Under full-suite load (many PTY
-    # threads scheduling at once) that can take several seconds, so the deadline
-    # is deliberately generous; it polls every 0.1s and returns the instant the
-    # flag flips, so a healthy run still finishes quickly.
+    # Waits on a real interactive shell to exit. The drain loop detects that via
+    # waitpid on its idle cycle (not just PTY EOF), so `closed` flips within ~0.2s
+    # of the actual exit even under load; the deadline is a comfortable margin and
+    # the poll returns the instant the flag flips.
     result = _poll(
         lambda: (lambda r: r if r.get("closed") else None)(mgr.read("t1")),
-        timeout=15.0,
+        timeout=10.0,
     )
     assert result is not None, "session never reported closed"
     assert result["closed"] is True

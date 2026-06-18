@@ -134,7 +134,13 @@ class TermManager:
     # ------------------------------------------------------------------
 
     def _drain_loop(self, term_id: str) -> None:
-        """Background thread: read from the PTY master fd into the session buffer."""
+        """Background thread: read from the PTY master fd into the session buffer.
+
+        Exit is detected two ways, whichever comes first: reading EOF off the
+        master fd, or :func:`os.waitpid` reporting the shell process has gone.
+        The latter is the authoritative signal — relying on PTY EOF alone can lag
+        badly under load — and it reaps the child so no zombie is left behind.
+        """
         while True:
             with self._lock:
                 session = self._sessions.get(term_id)
@@ -143,13 +149,17 @@ class TermManager:
             fd = session["fd"]
             try:
                 ready, _, _ = select.select([fd], [], [], 0.2)
-                if not ready:
+                if ready:
+                    chunk = os.read(fd, 4096)
+                    if not chunk:
+                        break
+                    with self._lock:
+                        session["buf"] += chunk
                     continue
-                chunk = os.read(fd, 4096)
-                if not chunk:
+                # Idle cycle: ask the OS directly whether the shell has exited,
+                # rather than waiting for the PTY to surface EOF.
+                if _reaped(session["pid"]):
                     break
-                with self._lock:
-                    session["buf"] += chunk
             except OSError:
                 break
         # Shell exited — mark the session closed but leave it readable.
@@ -166,6 +176,20 @@ class TermManager:
 def _set_winsize(fd: int, cols: int, rows: int) -> None:
     packed = struct.pack("HHHH", rows, cols, 0, 0)
     fcntl.ioctl(fd, termios.TIOCSWINSZ, packed)
+
+
+def _reaped(pid: int) -> bool:
+    """True if the shell ``pid`` has exited (reaping it if so).
+
+    ``waitpid(WNOHANG)`` returns ``(0, 0)`` while the child still runs and
+    ``(pid, status)`` once it has exited; a child already reaped elsewhere raises,
+    which we also treat as gone.
+    """
+    try:
+        done, _ = os.waitpid(pid, os.WNOHANG)
+    except (ChildProcessError, OSError):
+        return True
+    return done != 0
 
 
 def _kill(pid: int) -> None:
