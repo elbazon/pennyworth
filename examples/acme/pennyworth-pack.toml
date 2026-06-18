@@ -16,3 +16,14 @@ description = "The REST API service (Python)."
 name = "acme-web"
 path = "~/code/acme-web"
 description = "The React front-end."
+
+# Hands (MCP): the tool servers Alfred operates the platform through. Brain-only
+# for now — the index tells Alfred when to reach for each; wiring them live into
+# the host agent is a later step.
+[[hands]]
+name = "github"
+summary = "Pull requests, issues, and CI status — reach for it for any repo or review work."
+
+[[hands]]
+name = "postgres"
+summary = "Read-only queries against the Acme store — use it to confirm data shape before changing code."

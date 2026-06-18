@@ -13,7 +13,7 @@ of here on purpose.
 """
 
 from pennyworth import NULL_PACK, build_system_prompt
-from pennyworth.pack import Member, Pack, Repo, Skill
+from pennyworth.pack import Hand, Member, Pack, Repo, Skill
 
 # Stand-ins for whatever a real (possibly private) pack would inject.
 _SENTINELS = {
@@ -32,6 +32,7 @@ _REPO = Repo(
     path="/tmp/REPO-PATH-SENTINEL",
     description="REPO-DESC-SENTINEL",
 )
+_HAND = Hand(name="HAND-NAME-SENTINEL", summary="HAND-SUMMARY-SENTINEL")
 
 
 def _loaded_pack() -> Pack:
@@ -40,6 +41,7 @@ def _loaded_pack() -> Pack:
         skills=(_SKILL,),
         team=(_MEMBER,),
         repos=(_REPO,),
+        hands=(_HAND,),
         **_SENTINELS,
     )
 
@@ -48,6 +50,7 @@ def _all_pack_lines() -> list[str]:
     lines = [line for value in _SENTINELS.values() for line in value.splitlines()]
     lines += [_SKILL.description, _SKILL.path]
     lines += [_MEMBER.name, _MEMBER.title, _REPO.name, _REPO.path, _REPO.description]
+    lines += [_HAND.name, _HAND.summary]
     return lines
 
 
@@ -62,6 +65,8 @@ def test_attached_pack_content_reaches_the_brain():
         _MEMBER.name,
         _REPO.name,
         _REPO.description,
+        _HAND.name,
+        _HAND.summary,
     ):
         assert fragment in brain, f"pack seam did not reach the brain: {fragment!r}"
 
@@ -84,6 +89,7 @@ def test_null_brain_names_no_platform():
     assert "## Principal" not in brain
     assert "## The Team" not in brain
     assert "## Repositories" not in brain
+    assert "## Hands (MCP)" not in brain
     # Built-in craft skills are generic and DO appear with no pack attached.
     assert "## Skill Library" in brain
     assert "investigate.md" in brain

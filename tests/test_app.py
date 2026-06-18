@@ -257,6 +257,23 @@ def test_start_accepts_model_param(tmp_path, monkeypatch):
     assert started["ok"] is True and started["id"]
 
 
+def test_start_accepts_cwd_param(tmp_path, monkeypatch):
+    stub = tmp_path / "agent.sh"
+    stub.write_text("#!/bin/sh\necho hi\n")
+    stub.chmod(0o755)
+    monkeypatch.setenv("PENNYWORTH_AGENT", str(stub))
+    started = _bridge().start(
+        [{"role": "user", "text": "hi"}], cwd=str(tmp_path)
+    )
+    assert started["ok"] is True and started["id"]
+
+
+def test_pick_dir_returns_error_without_window():
+    r = _bridge().pick_dir()
+    assert r["ok"] is False
+    assert r.get("error")  # cancelled / no window / headless mode — all are errors
+
+
 def test_about_names_alfred_and_pennyworth():
     about = _bridge().about()
     assert about["assistant"] == "Alfred"
@@ -382,6 +399,13 @@ def test_ui_has_terminal():
     assert "term_close(" in html
     assert "termPane" in html
     assert "stripAnsi(" in html
+
+
+def test_ui_has_working_dir_picker():
+    html = window.index_path().read_text()
+    assert "pick_dir(" in html
+    assert "cwdPick" in html
+    assert "setCwd(" in html
 
 
 def test_portrait_asset_ships():

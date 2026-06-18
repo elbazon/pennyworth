@@ -204,6 +204,8 @@
           <select class="mdl" id="modelSel">
             <option value="">— model default —</option>
           </select>
+          <button class="pbtn ghost" id="cwdPick" title="Set working directory" style="font-size:12px;padding:4px 10px;">📁</button>
+          <span id="cwdLabel" style="font-size:11.5px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:200px;" title=""></span>
           <button class="pbtn ghost" id="termToggle" style="margin-left:auto;font-size:12px;padding:4px 10px;">⌥ Shell</button>
         </div>
         <div class="hint">Enter to send · Shift-Enter for a new line · ⌘N new chat · ⌘1–9 switch</div>
@@ -380,11 +382,21 @@
   }
 
   /* ---------- chat list ---------- */
+  const elCwdLabel = document.getElementById("cwdLabel");
+  function setCwd(c, path) {
+    c.cwd = path || null;
+    if (elCwdLabel) {
+      elCwdLabel.textContent = path ? path.split(/[\\/]/).pop() : "";
+      elCwdLabel.title = path || "";
+    }
+  }
+
   function newChat() {
-    const c = { id: "c" + (seq++), title: "New chat", messages: [], cost: 0, model: null, stored: false, loaded: true };
+    const c = { id: "c" + (seq++), title: "New chat", messages: [], cost: 0, model: null, cwd: null, stored: false, loaded: true };
     chats.unshift(c);
     activeId = c.id;
     elModelSel.value = "";
+    setCwd(c, null);
     renderChats(); renderMessages(); showChatView(); input.focus();
   }
 
@@ -399,11 +411,13 @@
           c.cost = doc.cost || 0;
           c.title = doc.title || c.title;
           c.model = doc.model || null;
+          c.cwd = doc.cwd || null;
         }
       } catch (e) {}
       c.loaded = true;
     }
     elModelSel.value = (c && c.model) || "";
+    setCwd(c, c && c.cwd);
     renderChats(); renderMessages(); showChatView(); input.focus();
   }
 
@@ -650,7 +664,7 @@
     setBusy(true); scrollDown();
     let saved = { role: "alfred", text: "" };
     try {
-      const started = await api().start(c.messages, model);
+      const started = await api().start(c.messages, model, c.cwd || null);
       if (!started || started.ok === false || !started.id) {
         refs.body.textContent = "(nothing to ask)"; refs.body.classList.add("err");
         saved = { role: "alfred", text: "(nothing to ask)", err: true };
@@ -677,7 +691,7 @@
 
   async function persist(c) {
     try {
-      await api().persist_chat(c.id, { title: c.title, messages: c.messages, cost: c.cost, model: c.model || null });
+      await api().persist_chat(c.id, { title: c.title, messages: c.messages, cost: c.cost, model: c.model || null, cwd: c.cwd || null });
       c.stored = true; c.loaded = true;
     } catch (e) {}
   }
@@ -790,7 +804,7 @@
     if (a && a.list_app_chats) {
       try {
         const rows = await a.list_app_chats();
-        (rows || []).forEach(r => chats.push({ id: r.id, title: r.title, messages: [], cost: r.cost || 0, model: r.model || null, stored: true, loaded: false }));
+        (rows || []).forEach(r => chats.push({ id: r.id, title: r.title, messages: [], cost: r.cost || 0, model: r.model || null, cwd: r.cwd || null, stored: true, loaded: false }));
       } catch (e) {}
     }
     // Populate model picker
@@ -816,6 +830,13 @@
   elNav.querySelectorAll("button").forEach(b => b.addEventListener("click", () => showView(b.dataset.view)));
   sendBtn.addEventListener("click", send);
   document.getElementById("attach").addEventListener("click", pickAndAttach);
+  document.getElementById("cwdPick").addEventListener("click", async () => {
+    if (!api() || !api().pick_dir) return;
+    let r; try { r = await api().pick_dir(); } catch (e) { return; }
+    if (!r || !r.ok) return;
+    const c = active(); if (!c) return;
+    setCwd(c, r.path);
+  });
   document.getElementById("termToggle").addEventListener("click", () => { if (termActive) closeTerminal(); else openTerminal(); });
   document.getElementById("termClose").addEventListener("click", closeTerminal);
   elTermIn.addEventListener("keydown", async (ev) => {

@@ -17,6 +17,17 @@ def test_load_example_pack():
     assert pack.is_attached
 
 
+def test_load_example_pack_reads_hands():
+    """The manifest's [[hands]] array loads into the pack and reaches the brain."""
+    pack = packs.load_pack(EXAMPLE)
+    names = [h.name for h in pack.hands]
+    assert names == ["github", "postgres"]
+    assert all(h.summary for h in pack.hands)
+    brain = build_system_prompt(pack)
+    assert "## Hands (MCP)" in brain
+    assert "**github**" in brain
+
+
 def test_attach_list_active_detach(tmp_path, monkeypatch):
     monkeypatch.setenv("PENNYWORTH_HOME", str(tmp_path))
 

@@ -70,6 +70,26 @@ class Repo:
 
 
 @dataclass(frozen=True)
+class Hand:
+    """An MCP tool server a pack gives Alfred — his "hands" on the platform.
+
+    The brain only *indexes* hands: it tells Alfred which tool servers exist and
+    when to reach for each, so he invokes the host agent's MCP tools at the
+    moment a task matches. The core never imports platform tooling — this is the
+    boundary it talks across (design principle #2). Wiring a declared server into
+    the host agent so its tools are live is a separate, later step; this seam is
+    the contract surface and the index, not the transport.
+
+    Attributes:
+        name: How the tool server is referred to (e.g. ``"teamcity"``).
+        summary: One line on what it gives Alfred hands on — when to reach for it.
+    """
+
+    name: str
+    summary: str = ""
+
+
+@dataclass(frozen=True)
 class Pack:
     """A platform knowledge pack.
 
@@ -96,6 +116,8 @@ class Pack:
             team. Empty means no Team section.
         repos: The repositories the platform works in, rendered as an inventory.
             Empty means no Repositories section.
+        hands: The MCP tool servers the platform operates through, rendered as an
+            index of "hands". Empty means no Hands section.
     """
 
     name: str = ""
@@ -105,6 +127,7 @@ class Pack:
     skills: tuple[Skill, ...] = ()
     team: tuple[Member, ...] = ()
     repos: tuple[Repo, ...] = ()
+    hands: tuple[Hand, ...] = ()
 
     @property
     def is_attached(self) -> bool:

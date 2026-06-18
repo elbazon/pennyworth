@@ -106,8 +106,14 @@ def test_read_reports_closed_after_exit(mgr):
     mgr.open("t1")
     _poll(lambda: mgr.read("t1")["output"])  # drain prompt
     mgr.write("t1", "exit\n")
+    # This waits on a real interactive shell to exit and the drain thread to
+    # observe EOF — genuinely asynchronous. Under full-suite load (many PTY
+    # threads scheduling at once) that can take several seconds, so the deadline
+    # is deliberately generous; it polls every 0.1s and returns the instant the
+    # flag flips, so a healthy run still finishes quickly.
     result = _poll(
-        lambda: (lambda r: r if r.get("closed") else None)(mgr.read("t1")), timeout=4.0
+        lambda: (lambda r: r if r.get("closed") else None)(mgr.read("t1")),
+        timeout=15.0,
     )
     assert result is not None, "session never reported closed"
     assert result["closed"] is True

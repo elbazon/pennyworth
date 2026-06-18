@@ -57,6 +57,7 @@ def _cmd_run(args: argparse.Namespace) -> int:
         add_dirs=args.add_dirs,
         allow_all=args.allow_all,
         model=getattr(args, "model", None),
+        cwd=getattr(args, "cwd", None),
         profile=_profile.active_profile(),
     )
 
@@ -69,6 +70,7 @@ def _cmd_chat(args: argparse.Namespace) -> int:
         add_dirs=args.add_dirs,
         allow_all=args.allow_all,
         model=getattr(args, "model", None),
+        cwd=getattr(args, "cwd", None),
         profile=_profile.active_profile(),
     )
 
@@ -104,7 +106,26 @@ def _cmd_profile_clear(_args: argparse.Namespace) -> int:
     return 0
 
 
-def _cmd_app(_args: argparse.Namespace) -> int:
+def _cmd_app(args: argparse.Namespace) -> int:
+    if getattr(args, "install", False):
+        from pennyworth.app.bundle import install_app_bundle
+
+        try:
+            path = install_app_bundle()
+            print(f"Installed: {path}")
+            print("Drag Alfred.app to your Dock, or double-click to launch.")
+        except Exception as exc:
+            print(f"error: {exc}", file=sys.stderr)
+            return 1
+        return 0
+
+    if getattr(args, "uninstall", False):
+        from pennyworth.app.bundle import remove_app_bundle
+
+        removed = remove_app_bundle()
+        print("Removed Alfred.app." if removed else "Alfred.app not found.")
+        return 0
+
     from pennyworth.app.window import main as app_main
 
     return app_main()
@@ -122,6 +143,11 @@ def _add_agent_args(parser: argparse.ArgumentParser) -> None:
         "--model",
         metavar="MODEL",
         help="model to use (e.g. claude-opus-4-8); defaults to the agent's own default",
+    )
+    parser.add_argument(
+        "--cwd",
+        metavar="PATH",
+        help="working directory for the agent process (default: current directory)",
     )
     parser.add_argument(
         "--dangerously-allow-all",
@@ -187,9 +213,18 @@ def build_parser() -> argparse.ArgumentParser:
     _add_agent_args(chat)
     chat.set_defaults(func=_cmd_chat)
 
-    sub.add_parser(
-        "app", help="launch the desktop app (needs the 'app' extra)"
-    ).set_defaults(func=_cmd_app)
+    app_cmd = sub.add_parser("app", help="launch the desktop app (needs the 'app' extra)")
+    app_cmd.add_argument(
+        "--install",
+        action="store_true",
+        help="install Alfred.app to ~/Applications (macOS only)",
+    )
+    app_cmd.add_argument(
+        "--uninstall",
+        action="store_true",
+        help="remove Alfred.app from ~/Applications (macOS only)",
+    )
+    app_cmd.set_defaults(func=_cmd_app)
 
     return parser
 

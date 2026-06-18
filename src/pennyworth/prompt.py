@@ -227,6 +227,29 @@ def _repos(pack: Pack) -> str:
     return "## Repositories\n\n" + lines
 
 
+def _hands(pack: Pack) -> str:
+    """Render the Hands (MCP) index from the pack. Empty when the pack has none.
+
+    Only an index reaches the brain — which tool servers exist and when to reach
+    for each. Alfred invokes them through the host agent's MCP tools; the core
+    never imports platform tooling. Phrased host-agnostically (no assumption
+    about the host's tool-naming convention) since the core can drive agents
+    other than the default.
+    """
+    if not pack.hands:
+        return ""
+    lines = "\n".join(
+        f"- **{h.name}**" + (f" — {h.summary}" if h.summary else "") for h in pack.hands
+    )
+    return (
+        "## Hands (MCP)\n\n"
+        "Alfred operates this platform through these MCP tool servers — invoked, "
+        "never imported. When a task calls for one, use the tools that server "
+        "exposes through the host agent rather than improvising:\n\n"
+        f"{lines}"
+    )
+
+
 def build_system_prompt(
     pack: Pack = NULL_PACK,
     *,
@@ -264,7 +287,7 @@ def build_system_prompt(
         parts.append(user_block)
     if pack.principal_block:
         parts.append(pack.principal_block)
-    for section_text in (_skills(pack), _team(pack), _repos(pack)):
+    for section_text in (_skills(pack), _team(pack), _repos(pack), _hands(pack)):
         if section_text:
             parts.append(section_text)
     parts.extend(

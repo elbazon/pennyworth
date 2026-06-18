@@ -19,7 +19,7 @@ from pathlib import Path
 import tomllib
 
 from pennyworth import skills as _skills
-from pennyworth.pack import NULL_PACK, Member, Pack, Repo
+from pennyworth.pack import NULL_PACK, Hand, Member, Pack, Repo
 
 MANIFEST_NAME = "pennyworth-pack.toml"
 TEAM_FILENAME = "team.json"
@@ -62,6 +62,19 @@ def _load_repos(data: dict) -> tuple[Repo, ...]:
             )
         )
     return tuple(repos)
+
+
+def _load_hands(data: dict) -> tuple[Hand, ...]:
+    """Read the manifest's top-level ``[[hands]]`` array of ``{name, summary}``."""
+    hands: list[Hand] = []
+    for entry in data.get("hands") or []:
+        if not isinstance(entry, dict):
+            continue
+        name = str(entry.get("name") or "").strip()
+        if not name:
+            continue
+        hands.append(Hand(name=name, summary=str(entry.get("summary") or "").strip()))
+    return tuple(hands)
 
 
 def home() -> Path:
@@ -112,6 +125,7 @@ def load_pack(path: str | Path) -> Pack:
         skills=_skills.load_skills(src),
         team=_load_team(src),
         repos=_load_repos(data),
+        hands=_load_hands(data),
     )
 
 

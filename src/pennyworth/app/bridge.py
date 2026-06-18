@@ -272,7 +272,12 @@ class Bridge:
         reply = "".join(chunks).strip()
         return {"ok": code == 0, "text": reply or "(the agent produced no output)"}
 
-    def start(self, messages: list[dict], model: str | None = None) -> dict:
+    def start(
+        self,
+        messages: list[dict],
+        model: str | None = None,
+        cwd: str | None = None,
+    ) -> dict:
         """Begin a streaming turn; returns ``{"ok", "id"}``.
 
         The agent runs on a background thread, accumulating its reply into a
@@ -280,7 +285,8 @@ class Bridge:
         grows — request/response only, never a cross-thread event push.
 
         ``model`` is an optional Claude model ID (e.g. ``"claude-opus-4-8"``)
-        to pass as ``--model`` to the host agent.
+        to pass as ``--model`` to the host agent.  ``cwd`` sets the working
+        directory the agent process is launched in.
         """
         request = _compose(messages or [])
         if not request:
@@ -290,12 +296,18 @@ class Bridge:
         with self._lock:
             self._turns[turn_id] = turn
         worker = threading.Thread(
-            target=self._run_turn, args=(turn, request, model), daemon=True
+            target=self._run_turn, args=(turn, request, model, cwd), daemon=True
         )
         worker.start()
         return {"ok": True, "id": turn_id}
 
-    def _run_turn(self, turn: dict, request: str, model: str | None = None) -> None:
+    def _run_turn(
+        self,
+        turn: dict,
+        request: str,
+        model: str | None = None,
+        cwd: str | None = None,
+    ) -> None:
         """Drive one streaming turn on a worker thread into ``turn``'s buffer.
 
         Accumulates the structured event stream — visible text, extended
@@ -323,6 +335,7 @@ class Bridge:
                 self._pack_provider(),
                 on_event=on_event,
                 model=model,
+                cwd=cwd,
                 profile=self._profile_provider(),
             )
             ok = code == 0
@@ -375,6 +388,27 @@ class Bridge:
             return {"ok": False, "error": "cancelled"}
         path = Path(result[0])
         return {"ok": True, "name": path.name, "path": str(path)}
+
+    def pick_dir(self) -> dict:
+        """Open a native folder picker (pywebview dialog).
+
+        Returns ``{ok, path}`` on success, or ``{ok: False, error}`` when the
+        picker is unavailable (headless/test mode) or the user cancels.
+        """
+        try:
+            import webview  # lazy — not installed in the CI/test environment
+
+            wins = webview.windows
+        except (ImportError, AttributeError):
+            return {"ok": False, "error": "folder picker not available (headless mode)"}
+        if not wins:
+            return {"ok": False, "error": "no window"}
+        result = wins[0].create_file_dialog(
+            dialog_type=webview.FOLDER_DIALOG,
+        )
+        if not result:
+            return {"ok": False, "error": "cancelled"}
+        return {"ok": True, "path": str(result[0])}
 
     def read_file_text(self, path: str, max_bytes: int = 524288) -> dict:
         """Read a text file and return its content (up to ``max_bytes``).

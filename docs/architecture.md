@@ -31,29 +31,40 @@ Every platform-specific seam in the prompt is filled from the active pack (or le
 sensible generic default when no pack is attached).
 
 ### Packs
-A pack is a directory plus a manifest. A first cut of the contract:
+A pack is a directory plus a manifest. The shipped contract is a single
+`pennyworth-pack.toml` that carries the platform identity and the repository
+inventory inline, alongside a few well-known sibling files:
 
 ```
 my-pack/
-  pennyworth-pack.toml   # manifest: name, platform name/blurb, identity rules, principal
-  persona.md             # optional persona overlay / platform binding prose
-  skills/*.md            # the platform's skill library
-  team.json              # the team directory (roster, roles)
-  repos.toml             # repository inventory: path keys + how to scan each
-  mcp.toml               # MCP tool servers that act as the assistant's "hands"
-  ci.toml                # CI provider + configuration
-  identity.toml          # bot commit identity, cloud profile names, principal
+  pennyworth-pack.toml   # [pack] name, platform_name, platform_blurb, principal_file
+                         #   + [[repos]] inventory (name / path / description), inline
+  principal.md           # optional: a primary user the assistant treats specially
+                         #   (path set by [pack].principal_file; may be private)
+  team.json              # optional: { "members": [{ "name", "title" }] }
+  skills/*.md            # optional: the platform's skill library (frontmatter: name, description)
+                         # + [[hands]] MCP tool-server index, inline in the manifest
 ```
 
-Concepts a pack can declare:
-- **Platform identity** — name and blurb that bind the generic persona to a specific platform.
-- **Skills** — on-demand reference content the assistant reads before acting in a domain.
-- **Team & principal** — the directory of people, and optionally a *principal*: a primary user
-  the assistant treats specially (with a private overlay, kept in the pack).
-- **Repositories** — the layout the assistant scans to build a live inventory.
-- **Hands (MCP)** — one or more MCP tool servers the assistant operates the platform through.
-  This is the boundary the core talks across, so **the core never imports platform tooling**.
+Implemented seams a pack can declare today:
+- **Platform identity** — `platform_name` and `platform_blurb` that bind the generic persona
+  to a specific platform.
+- **Repositories** — the `[[repos]]` inventory the assistant works in.
+- **Skills** — on-demand reference content (`skills/*.md`) the assistant reads before acting in
+  a domain; the brain renders an index, never the contents.
+- **Team & principal** — the `team.json` roster, and optionally a *principal*: a primary user
+  the assistant treats specially (a private overlay, kept in the pack).
+- **Hands (MCP)** — the `[[hands]]` array of MCP tool servers (`name`, `summary`) the assistant
+  operates the platform through. This is the boundary the core talks across, so **the core never
+  imports platform tooling** — the load-bearing seam the two-layer design is named for.
+  **Brain-only today:** the brain renders an *index* (which servers exist, when to reach for
+  each); Alfred invokes them via the host agent's MCP tools. Wiring a declared server live into
+  the host agent is a separate, later step (see §5).
+
+Designed but **not yet built** (no manifest surface, no loader) — each gated by the clean-brain
+test when it lands:
 - **CI** — the provider and configuration for build/deploy diagnosis.
+- **Identity** — bot commit identity and cloud profile names.
 
 ## 3. Attach / detach
 
@@ -102,11 +113,15 @@ Done in v0.1.0:
 - ✅ Per-user profile (name + form of address) so the no-pack butler addresses
   you correctly — host config under `PENNYWORTH_HOME`, not a pack (`alfred profile`).
 - ✅ CI: ruff + the test suite on every push/PR across Python 3.11–3.13.
+- ✅ The **Hands (MCP)** seam, brain-only: a pack's `[[hands]]` index reaches the
+  brain (which tool servers exist, when to reach for each), gated by the
+  clean-brain test. The core never imports platform tooling.
 
 Next:
-- More seams as needed (MCP "hands"), each gated by the clean-brain test.
-- More app surface: embedded terminal, voice dictation, slash commands,
-  attachments, model/persona pickers, Stats / Scheduled panels.
+- **Wire the Hands seam live** — configure the host agent from a pack's declared
+  MCP servers so their tools are callable, not just indexed. This is the seam's
+  transport half; the contract surface and index already ship.
+- The remaining seams (CI, identity), each gated by the clean-brain test.
 - Packaging & distribution (PyPI/release wheels), contribution guide.
 
 ## 6. Open items

@@ -180,6 +180,7 @@ def run(
     allow_all: bool = False,
     extra_args: list[str] | None = None,
     model: str | None = None,
+    cwd: str | None = None,
     profile: Profile = NULL_PROFILE,
 ) -> int:
     """Assemble the brain for ``pack`` and run the host agent.
@@ -199,7 +200,7 @@ def run(
         extra_args=(list(extra_args or []) + model_args) or None,
     )
     try:
-        return subprocess.run(cmd).returncode
+        return subprocess.run(cmd, cwd=cwd or None).returncode
     except FileNotFoundError:
         print(
             f"Host agent not found: {cmd[0]!r}. Install the Claude CLI, or set "
@@ -217,6 +218,7 @@ def stream_events(
     add_dirs: list[str] | None = None,
     allow_all: bool = False,
     model: str | None = None,
+    cwd: str | None = None,
     profile: Profile = NULL_PROFILE,
 ) -> int:
     """Run the host agent and deliver structured events via ``on_event``.
@@ -249,6 +251,7 @@ def stream_events(
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             text=True,
+            cwd=cwd or None,
         )
     except FileNotFoundError:
         on_event(
@@ -282,6 +285,7 @@ def stream(
     add_dirs: list[str] | None = None,
     allow_all: bool = False,
     model: str | None = None,
+    cwd: str | None = None,
     profile: Profile = NULL_PROFILE,
 ) -> int:
     """Run the host agent and deliver visible reply text via ``on_chunk``.
@@ -302,5 +306,6 @@ def stream(
         add_dirs=add_dirs,
         allow_all=allow_all,
         model=model,
+        cwd=cwd,
         profile=profile,
     )

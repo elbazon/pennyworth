@@ -210,6 +210,26 @@ def test_stream_events_model_ignored_for_custom_agent(monkeypatch):
     assert "--model" not in captured[0]
 
 
+def test_stream_events_passes_cwd(tmp_path, monkeypatch):
+    """cwd= is forwarded to Popen so the agent process starts in that directory."""
+    captured_kw: list[dict] = []
+
+    class FakeProc:
+        stdout = io.StringIO("")
+
+        def wait(self):
+            return 0
+
+    def fake_popen(cmd, **kw):
+        captured_kw.append(kw)
+        return FakeProc()
+
+    monkeypatch.setattr("pennyworth.runner.subprocess.Popen", fake_popen)
+    runner.stream_events("hi", on_event=lambda e: None, cwd=str(tmp_path))
+    assert captured_kw, "Popen was not called"
+    assert captured_kw[0].get("cwd") == str(tmp_path)
+
+
 def test_stream_events_collects_structured_events(tmp_path, monkeypatch):
     ndjson = tmp_path / "events.ndjson"
     ndjson.write_text(

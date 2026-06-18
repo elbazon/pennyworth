@@ -45,6 +45,8 @@ def test_core_skills_are_discovered_and_exist_on_disk():
         "aws_docs_mcp",
         "mcp_oauth",
         "testing",
+        "git",
+        "debugging",
     } <= names
     for skill in core.core_skills():
         assert Path(skill.path).is_file()
