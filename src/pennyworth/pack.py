@@ -149,6 +149,14 @@ class Pack:
             Empty means no Repositories section.
         hands: The MCP tool servers the platform operates through, rendered as an
             index of "hands". Empty means no Hands section.
+        ci_provider: The platform's CI/CD provider (e.g. ``"TeamCity"``,
+            ``"GitHub Actions"``). When set, the brain gains a short CI section
+            orienting Alfred for build/deploy diagnosis. Empty means no CI
+            section. The *deep* CI knowledge (build-config ids, deploy recipes)
+            belongs in a skill, and the tools to query CI in a hand — this seam
+            is only the orienting fact of which provider runs where.
+        ci_host: The CI provider's base URL (e.g. ``"https://ci.acme.example"``).
+            Rendered alongside ``ci_provider``; optional.
     """
 
     name: str = ""
@@ -160,6 +168,8 @@ class Pack:
     team: tuple[Member, ...] = ()
     repos: tuple[Repo, ...] = ()
     hands: tuple[Hand, ...] = ()
+    ci_provider: str = ""
+    ci_host: str = ""
 
     @property
     def is_attached(self) -> bool:

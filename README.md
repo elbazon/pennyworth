@@ -68,8 +68,9 @@ complete one.
 
 ```
 my-pack/
-  pennyworth-pack.toml   # name, platform identity, repositories
+  pennyworth-pack.toml   # name, platform identity, repositories, hands, CI
   principal.md           # optional: a primary user Alfred treats specially
+  attribution.md         # optional: commit/PR attribution & identity policy
   team.json              # optional: { "members": [{ "name", "title" }] }
   skills/*.md            # optional: on-demand reference docs (frontmatter: name, description)
 ```
@@ -81,16 +82,28 @@ name = "acme"
 platform_name = "the Acme platform"
 platform_blurb = "A Python + React monorepo with a REST API and a Postgres store."
 principal_file = "principal.md"
+attribution_file = "attribution.md"
+
+[ci]                       # which CI provider runs the builds, and where
+provider = "GitHub Actions"
+host = "https://github.com/acme/acme/actions"
 
 [[repos]]
 name = "acme-api"
 path = "~/code/acme-api"
 description = "The REST API service."
+
+[[hands]]                  # an MCP tool server Alfred operates the platform through
+name = "github"
+summary = "Pull requests, issues, and CI status."
+command = "npx"            # stdio transport (or set `url` for a remote server)
+args = ["-y", "@modelcontextprotocol/server-github"]
 ```
 
-Each piece fills a *seam* in the brain — persona binding, principal, skills,
-team, repositories — and is absent when the pack omits it. A pack may be private:
-open-source core, closed-source pack is a supported shape.
+Each piece fills a *seam* in the brain — persona binding, principal, attribution,
+skills, team, repositories, hands (MCP), CI — and is absent when the pack omits
+it. A pack may be private: open-source core, closed-source pack is a supported
+shape.
 
 ## How it fits together
 
@@ -103,10 +116,12 @@ See [`docs/architecture.md`](docs/architecture.md) for the design.
 
 ## Status
 
-v0.1.0 — runnable. The persona, the pack mechanism (identity, principal, skills,
-team, repositories), the per-user profile, the agent runner, and a desktop app
-(with streaming) all work end to end. CI runs ruff + the test suite on every push
-and pull request across Python 3.11–3.13. The pack contract grows seam by seam.
+v0.1.0 — runnable. The persona, the per-user profile, the agent runner, and a
+desktop app (with streaming) all work end to end, and the first-cut pack contract
+is complete: every seam — principal, attribution/identity, skills, team,
+repositories, hands (MCP, with live wiring into the host agent), and CI — is built
+and guarded by the clean-brain test. CI runs ruff + the test suite on every push
+and pull request across Python 3.11–3.13. Next: packaging for PyPI.
 
 ## License
 

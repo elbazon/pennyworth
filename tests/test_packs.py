@@ -27,6 +27,17 @@ def test_load_example_pack_reads_attribution():
     assert "acme-bot" in brain
 
 
+def test_load_example_pack_reads_ci():
+    """The [ci] table loads (provider + host) and renders a CI section."""
+    pack = packs.load_pack(EXAMPLE)
+    assert pack.ci_provider == "GitHub Actions"
+    assert pack.ci_host.startswith("https://github.com/acme")
+    brain = build_system_prompt(pack)
+    assert "## CI" in brain
+    assert "GitHub Actions" in brain
+    assert pack.ci_host in brain
+
+
 def test_load_example_pack_reads_hands():
     """The manifest's [[hands]] array loads into the pack and reaches the brain."""
     pack = packs.load_pack(EXAMPLE)

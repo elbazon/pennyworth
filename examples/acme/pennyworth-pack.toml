@@ -8,6 +8,12 @@ platform_blurb = "A Python + React monorepo with a REST API and a Postgres store
 principal_file = "principal.md"
 attribution_file = "attribution.md"
 
+# CI: the orienting fact of which provider runs the builds and where. The how-to
+# of diagnosing a build belongs in a skill; the tools to query CI, in a hand.
+[ci]
+provider = "GitHub Actions"
+host = "https://github.com/acme/acme/actions"
+
 [[repos]]
 name = "acme-api"
 path = "~/code/acme-api"

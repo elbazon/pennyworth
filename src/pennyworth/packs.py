@@ -109,6 +109,17 @@ def _config_path() -> Path:
     return home() / "config.toml"
 
 
+def _load_ci(data: dict) -> tuple[str, str]:
+    """Read the manifest's ``[ci]`` table → ``(provider, host)`` (both optional)."""
+    ci = data.get("ci") or {}
+    if not isinstance(ci, dict):
+        return "", ""
+    return (
+        str(ci.get("provider") or "").strip(),
+        str(ci.get("host") or "").strip(),
+    )
+
+
 def _load_block(src: Path, section: dict, key: str) -> str:
     """Read the Markdown file the manifest's ``[pack].<key>`` points to.
 
@@ -140,6 +151,8 @@ def load_pack(path: str | Path) -> Pack:
     if not name:
         raise ValueError(f"{manifest}: [pack].name is required")
 
+    ci_provider, ci_host = _load_ci(data)
+
     return Pack(
         name=name,
         platform_name=str(section.get("platform_name") or "").strip(),
@@ -150,6 +163,8 @@ def load_pack(path: str | Path) -> Pack:
         team=_load_team(src),
         repos=_load_repos(data),
         hands=_load_hands(data),
+        ci_provider=ci_provider,
+        ci_host=ci_host,
     )
 
 

@@ -1,8 +1,9 @@
 # Pennyworth — Architecture
 
-_Status: v0.1.0 — runnable. The persona, the pack mechanism (identity, principal,
-skills, team, repositories), the agent runner, and a desktop app are implemented;
-the pack contract grows seam by seam._
+_Status: v0.1.0 — runnable. The persona, the agent runner, and a desktop app are
+implemented, and the first-cut pack contract is complete: every seam — principal,
+skills, team, repositories, attribution/identity, hands (MCP, with live wiring),
+and CI — is built and gated by the clean-brain test._
 
 ## 1. Philosophy
 
@@ -68,10 +69,14 @@ Implemented seams a pack can declare today:
       its tools are callable. A hand with only `name` + `summary` stays brain-only (documented,
       not auto-wired). Transport fields are never rendered into the brain; secrets stay in the
       host environment, never in a manifest.
+- **CI** — the `[ci]` table (`provider`, `host`) names which CI/CD provider runs the platform's
+  builds and where, rendered as a short orienting section for build/deploy diagnosis. Only the
+  orienting fact lives here; the *how-to* (build ids, recipes) belongs in a skill and the *tools*
+  to query CI in a hand — this section points Alfred at both.
 
-Designed but **not yet built** (no manifest surface, no loader) — gated by the clean-brain test
-when it lands:
-- **CI** — the provider and configuration for build/deploy diagnosis.
+Every seam in the first-cut contract is now implemented. Future growth (pack versioning, richer
+manifest fields) follows the same rule: empty default in the core, real value in the pack, gated
+by the clean-brain test.
 
 ## 3. Attach / detach
 
@@ -110,7 +115,7 @@ the core is a failing build. "Looks clean" is not the bar — "greps clean" is.
 Done in v0.1.0:
 - ✅ Core prompt assembly behind a `Pack` interface, with a generic default pack.
 - ✅ Pack manifest + loader, and `pack attach` / `detach` / `list`.
-- ✅ Seams: persona binding, principal, skills, team, repositories, attribution/identity.
+- ✅ Seams: persona binding, principal, skills, team, repositories, attribution/identity, CI.
 - ✅ A reference pack (`examples/acme`) demonstrating the contract end to end.
 - ✅ The agent runner (drives the host coding agent) + CLI (`run` / `chat`).
 - ✅ A clean, unbranded desktop app (`alfred app`): streaming token output,
@@ -128,10 +133,13 @@ Done in v0.1.0:
 - ✅ The **Attribution & identity** seam: a pack's `[pack].attribution_file` block
   (bot commit identity, requester credit, cloud-profile conventions) is injected
   verbatim after the generic Rules, gated by the clean-brain test.
+- ✅ The **CI** seam: a pack's `[ci]` table (provider + host) renders a short
+  orienting section for build/deploy diagnosis. **Every seam in the first-cut
+  pack contract is now implemented.**
 
 Next:
-- The **CI** seam (provider + build/deploy config), gated by the clean-brain test.
-- Packaging & distribution (PyPI/release wheels), contribution guide.
+- Packaging & distribution (PyPI/release wheels), contribution guide — the
+  release step that makes `pipx install pennyworth` real for outside contributors.
 
 ## 6. Open items
 

@@ -21,6 +21,8 @@ _SENTINELS = {
     "platform_blurb": "It runs the EXAMPLE-STACK-SENTINEL end to end.",
     "principal_block": "## Principal\nThe EXAMPLE-PRINCIPAL-SENTINEL, served specially.",
     "attribution_block": "## Attribution\nCommit as EXAMPLE-BOT-SENTINEL.",
+    "ci_provider": "CI-PROVIDER-SENTINEL",
+    "ci_host": "https://CI-HOST-SENTINEL.example",
 }
 _SKILL = Skill(
     name="sentinel",
@@ -91,6 +93,7 @@ def test_null_brain_names_no_platform():
     assert "## Attribution" not in brain
     assert "## The Team" not in brain
     assert "## Repositories" not in brain
+    assert "## CI" not in brain
     assert "## Hands (MCP)" not in brain
     # Built-in craft skills are generic and DO appear with no pack attached.
     assert "## Skill Library" in brain

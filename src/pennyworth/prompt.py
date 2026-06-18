@@ -227,6 +227,25 @@ def _repos(pack: Pack) -> str:
     return "## Repositories\n\n" + lines
 
 
+def _ci(pack: Pack) -> str:
+    """Render the CI orienting section from the pack. Empty when no provider.
+
+    Only the orienting fact — which provider, and where — goes here. The how-to
+    of diagnosing a build belongs in a skill, and the tools to query CI in a
+    hand; this section points Alfred at them.
+    """
+    if not pack.ci_provider:
+        return ""
+    where = f" at {pack.ci_host}" if pack.ci_host else ""
+    return (
+        "## CI\n\n"
+        f"This platform's builds and deploys run on **{pack.ci_provider}**{where}. "
+        "For build/deploy diagnosis, reach for the matching CI hand (if the pack "
+        "provides one) and read the relevant CI skill before acting — don't guess "
+        "at build ids, branches, or recipes."
+    )
+
+
 def _hands(pack: Pack) -> str:
     """Render the Hands (MCP) index from the pack. Empty when the pack has none.
 
@@ -287,7 +306,13 @@ def build_system_prompt(
         parts.append(user_block)
     if pack.principal_block:
         parts.append(pack.principal_block)
-    for section_text in (_skills(pack), _team(pack), _repos(pack), _hands(pack)):
+    for section_text in (
+        _skills(pack),
+        _team(pack),
+        _repos(pack),
+        _hands(pack),
+        _ci(pack),
+    ):
         if section_text:
             parts.append(section_text)
     parts.extend(
