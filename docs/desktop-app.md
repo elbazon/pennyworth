@@ -32,7 +32,7 @@ flowchart LR
   Sidebar --- Main
 ```
 
-📸 `images/app-overview.png` — the whole window, a chat in progress.
+![Alfred — the desktop app with a conversation in progress](images/app-overview.png)
 
 ## Chat
 
@@ -50,7 +50,7 @@ The heart of the app. Type in plain language and Alfred streams his reply.
 - **Multi-chat** — each conversation in the sidebar keeps its own model, persona,
   working directory, and history. Conversations are saved and survive a restart.
 
-📸 `images/chat-streaming.png` — a reply mid-stream with the reasoning drawer open.
+![A reply streaming, with the reasoning drawer open](images/chat-streaming.png)
 
 ## Embedded terminal
 
@@ -65,7 +65,7 @@ prompt at the start of each turn — no code change, no pack. Add inline notes,
 import a file, or link a file (re-read live each turn). Full guide:
 **[Teach Alfred your domain](knowledge.md)**.
 
-📸 `images/knowledge.png` — the Knowledge panel with a couple of entries.
+![The Knowledge panel](images/knowledge.png)
 
 ## ⚡ Skills
 
@@ -80,7 +80,7 @@ changes. Add repositories under **Settings → Repositories**; every configured
 repo is also handed to Alfred as a working directory, so he can operate in it
 directly. (No Docker/CI/deploy sections — those belong to a platform pack.)
 
-📸 `images/batcave.png` — the Batcave listing a repo's git state.
+![The Batcave listing configured repositories and their git state](images/batcave.png)
 
 ## 🔌 Connectors
 
@@ -104,7 +104,7 @@ Prompts Alfred runs at a chosen time while the app is open — a quick way to qu
 - **Appearance** — UI font (system/serif/mono), scale, and theme.
 - **Repositories** — the repos Alfred works in and that appear in the Batcave.
 
-📸 `images/settings.png` — the Settings panel.
+![The Settings panel](images/settings.png)
 
 ## Themes
 

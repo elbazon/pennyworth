@@ -6,7 +6,7 @@ gotchas — with no code change and no pack. Every enabled entry is injected int
 his system prompt at the start of **each turn**, so he reasons with your context
 from the first word.
 
-📸 `images/knowledge.png` — the Knowledge panel.
+![The Knowledge panel](images/knowledge.png)
 
 ## How it works
 

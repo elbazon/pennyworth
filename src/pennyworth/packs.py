@@ -78,9 +78,7 @@ def _load_hands(data: dict) -> tuple[Hand, ...]:
         name = str(entry.get("name") or "").strip()
         if not name:
             continue
-        args = tuple(
-            str(a) for a in (entry.get("args") or []) if str(a).strip()
-        )
+        args = tuple(str(a) for a in (entry.get("args") or []) if str(a).strip())
         hands.append(
             Hand(
                 name=name,

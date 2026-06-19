@@ -213,7 +213,9 @@ def build_parser() -> argparse.ArgumentParser:
     _add_agent_args(chat)
     chat.set_defaults(func=_cmd_chat)
 
-    app_cmd = sub.add_parser("app", help="launch the desktop app (needs the 'app' extra)")
+    app_cmd = sub.add_parser(
+        "app", help="launch the desktop app (needs the 'app' extra)"
+    )
     app_cmd.add_argument(
         "--install",
         action="store_true",

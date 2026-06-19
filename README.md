@@ -4,6 +4,8 @@
 
 > A dignified butler-engineer AI companion for your platform. You talk to **Alfred**; the project is **Pennyworth**.
 
+![Alfred — the open-source desktop app](docs/images/app-overview.png)
+
 Pennyworth is an open-source engineering companion. It reads, writes, and reviews
 code, navigates architecture, diagnoses CI, and shepherds changes — in the
 unflappable voice of a proper manservant. It drives a host coding agent (the

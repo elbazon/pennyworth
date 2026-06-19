@@ -1011,7 +1011,7 @@
       <button id="navBatcave" title="Your configured repositories at a glance — each one's branch and uncommitted changes"><span>🦇</span>Batcave</button>
       <button id="navSkills" title="Alfred's platform knowledge — skills that load automatically by topic"><span>⚡</span>Skills</button>
       <button id="navKnowledge" title="Your domain knowledge — injected into Alfred's prompt every turn"><span>📚</span>Knowledge</button>
-      <button id="navMcp" title="MCP connectors that give Alfred new hands — TeamCity, Jira, AWS docs, Sentry, claude.ai"><span>🔌</span>Connectors</button>
+      <button id="navMcp" title="MCP connectors that give Alfred new hands — GitHub, Jira, AWS docs, Sentry, claude.ai"><span>🔌</span>Connectors</button>
       <button id="navUsage" title="Usage — your Claude subscription quotas"><span>📊</span>Usage<span class="usagepill" id="usagePill" hidden></span></button>
       <button id="navStats" title="Your Alfred + Claude activity, mined locally from session history" style="display:none"><span>📈</span>Stats</button>
       <button id="navSched" title="Scheduled prompts — Alfred runs them at a chosen time while the app is open"><span>⏰</span>Scheduled</button>
@@ -1174,7 +1174,7 @@
     <section class="view" id="viewMcp">
       <div class="panel"><div class="col">
         <h2>Connectors</h2>
-        <div class="sub">MCP servers give Alfred new hands — TeamCity, Jira, AWS docs,
+        <div class="sub">MCP servers give Alfred new hands — GitHub, Jira, AWS docs,
           or anything custom. Managed here, used everywhere.</div>
         <div class="actions">
           <button class="btn" id="addMcpBtn">＋ Add connector</button>
@@ -1260,11 +1260,6 @@
           to Alfred as a working directory so he can operate in it directly.</div>
         <div id="dirWarn" class="warnbox" hidden></div>
         <div class="card" id="dirCard"></div>
-
-        <h2 style="margin-top:28px">Version</h2>
-        <div class="sub">Install a different morning-cli release. Alfred closes,
-          runs the install in Terminal, then reopens on the chosen version.</div>
-        <div class="card" id="versionCard"></div>
       </div></div>
     </section>
 
@@ -4441,9 +4436,6 @@
     ["model", "Model", "select", ["auto", "haiku", "sonnet", "opus", "opus[1m]", "fable"],
       "auto routes each request to the cheapest capable model"],
     ["max_turns", "Max turns", "number", null, "agent turn budget per request"],
-    ["teamcity_url", "TeamCity URL", "text", null, "e.g. https://teamcity.morning.dev"],
-    ["teamcity_token", "TeamCity token", "password", null,
-      "stored locally; leave blank to keep the current one"],
     ["mode", "Execution mode", "select", ["auto", "plan"],
       "plan proposes changes as IDE diffs; auto applies directly"],
     ["show_thinking", "Show thinking", "toggle", null,
@@ -4477,7 +4469,7 @@
         const inp = el("input");
         inp.type = kind;
         if (kind === "password")
-          inp.placeholder = s.teamcity_token_set ? "••••••••  (set)" : "paste token";
+          inp.placeholder = s[key + "_set"] ? "••••••••  (set)" : "paste token";
         else inp.value = s[key] ?? "";
         inp.addEventListener("change", async () => {
           if (kind === "password" && !inp.value) return;  // blank keeps current
@@ -4626,8 +4618,8 @@
       warn.append(el("div", "warntitle", "⚠ " + missing.length +
         " required path" + (missing.length > 1 ? "s" : "") + " not set"));
       warn.append(el("div", "warnbody",
-        "Without " + missing.join(", ") + ", morning-cli can't run the local " +
-        "stack and Alfred can't develop in your repositories. Set " +
+        "Without " + missing.join(", ") + ", Alfred can't work in your " +
+        "repositories. Set " +
         (missing.length > 1 ? "them" : "it") + " below."));
     } else {
       warn.hidden = true;

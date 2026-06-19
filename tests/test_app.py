@@ -73,7 +73,6 @@ def test_get_settings_shape_and_set_setting_round_trip(tmp_path, monkeypatch):
     s = bridge.get_settings()
     for key in ("name", "email", "model", "ui_font", "ui_theme", "max_turns"):
         assert key in s
-    assert s["teamcity_token_set"] is False
 
     updated = bridge.set_setting("ui_font", "serif")
     assert updated["ui_font"] == "serif"
@@ -542,7 +541,9 @@ def test_inline_script_parses(tmp_path):
     end = next(i for i in range(start + 1, len(html)) if "</script>" in html[i])
     script = tmp_path / "inline.js"
     script.write_text("\n".join(html[start + 1 : end]))
-    result = subprocess.run([node, "--check", str(script)], capture_output=True, text=True)
+    result = subprocess.run(
+        [node, "--check", str(script)], capture_output=True, text=True
+    )
     assert result.returncode == 0, f"inline script has a syntax error:\n{result.stderr}"
 
 

@@ -47,6 +47,8 @@ A native window opens to the welcome screen. Type a request in plain language â€
 *"explain this codebase"*, *"review my changes"* â€” and Alfred replies, streaming
 his answer. See the [desktop app tour](desktop-app.md) for every panel.
 
+![Alfred's welcome screen](images/welcome.png)
+
 **The CLI**, for quick one-shots and scripting:
 
 ```bash

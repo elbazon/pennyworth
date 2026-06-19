@@ -270,13 +270,7 @@ class Bridge:
         return data
 
     def _settings_payload(self) -> dict:
-        s = self._load_settings()
-        # teamcity_* kept for shape compatibility with the settings panel; the
-        # open-source build carries no TeamCity integration.
-        s["teamcity_url"] = s.get("teamcity_url", "") or ""
-        s["teamcity_token_set"] = False
-        s.pop("teamcity_token", None)
-        return s
+        return self._load_settings()
 
     # --- boot: state, settings -------------------------------------------
 
@@ -408,7 +402,8 @@ class Bridge:
         # Alfred can read and operate on them rather than treating them as
         # "outside the workspace". The chat's own cwd is passed separately.
         add_dirs = [
-            r["path"] for r in self._load_extras()
+            r["path"]
+            for r in self._load_extras()
             if r.get("exists") and r["path"] != chat.get("cwd")
         ]
         want_thinking = bool(self._load_settings().get("show_thinking"))
@@ -441,9 +436,7 @@ class Bridge:
                 reply.append(ev.get("text", ""))
                 emit({"type": "stream", "kind": "text", "text": ev.get("text", "")})
             elif kind == "thinking":
-                emit(
-                    {"type": "stream", "kind": "thinking", "text": ev.get("text", "")}
-                )
+                emit({"type": "stream", "kind": "thinking", "text": ev.get("text", "")})
             elif kind == "tool":
                 emit(
                     {
@@ -538,9 +531,7 @@ class Bridge:
         chat["term_open"] = True
         if result.get("reused"):
             return {"ok": True, "already": True}
-        threading.Thread(
-            target=self._term_pump, args=(chat_id,), daemon=True
-        ).start()
+        threading.Thread(target=self._term_pump, args=(chat_id,), daemon=True).start()
         return {"ok": True}
 
     def _term_pump(self, chat_id: str) -> None:
@@ -610,9 +601,11 @@ class Bridge:
         p = Path(path or "")
         if not p.exists():
             return {"error": f"not found: {path}"}
-        return {"ok": True, "via": "open"} if self._open_native(str(p)) else {
-            "error": "could not open"
-        }
+        return (
+            {"ok": True, "via": "open"}
+            if self._open_native(str(p))
+            else {"error": "could not open"}
+        )
 
     def open_terminal(self, path: str) -> dict:
         p = Path(path or ".")
@@ -631,9 +624,11 @@ class Bridge:
                 return {"ok": True}
             except OSError:
                 continue
-        return {"ok": True} if self._open_native(str(path)) else {
-            "error": "no editor found"
-        }
+        return (
+            {"ok": True}
+            if self._open_native(str(path))
+            else {"error": "no editor found"}
+        )
 
     def focus_path(self, chat_id: str) -> dict:
         try:
@@ -770,13 +765,23 @@ class Bridge:
 
         pack = self._pack_provider()
         rows = [
-            {"name": s.name, "description": s.description, "source": "core",
-             "title": s.name, "local": False}
+            {
+                "name": s.name,
+                "description": s.description,
+                "source": "core",
+                "title": s.name,
+                "local": False,
+            }
             for s in _skillmod.core_skills()
         ]
         rows += [
-            {"name": s.name, "description": s.description,
-             "source": pack.name or "pack", "title": s.name, "local": False}
+            {
+                "name": s.name,
+                "description": s.description,
+                "source": pack.name or "pack",
+                "title": s.name,
+                "local": False,
+            }
             for s in pack.skills
         ]
         return rows
@@ -798,9 +803,7 @@ class Bridge:
         for jsonl in projects.glob("**/*.jsonl") if projects.is_dir() else []:
             sessions += 1
             try:
-                days.add(
-                    datetime.date.fromtimestamp(jsonl.stat().st_mtime).isoformat()
-                )
+                days.add(datetime.date.fromtimestamp(jsonl.stat().st_mtime).isoformat())
             except OSError:
                 pass
             try:
@@ -947,8 +950,11 @@ class Bridge:
                 {
                     "id": doc.get("id") or path.stem,
                     "name": doc.get("name") or path.stem,
-                    "vars": {k: v for k, v in (doc.get("vars") or {}).items()
-                             if k in _THEME_VARS},
+                    "vars": {
+                        k: v
+                        for k, v in (doc.get("vars") or {}).items()
+                        if k in _THEME_VARS
+                    },
                 }
             )
         out.sort(key=lambda t: t["name"].lower())
@@ -967,8 +973,9 @@ class Bridge:
         doc = {
             "id": theme_id,
             "name": name,
-            "vars": {k: v for k, v in (theme.get("vars") or {}).items()
-                     if k in _THEME_VARS},
+            "vars": {
+                k: v for k, v in (theme.get("vars") or {}).items() if k in _THEME_VARS
+            },
         }
         try:
             d = self._themes_dir()
@@ -1027,9 +1034,7 @@ class Bridge:
 
     def _clipboard_get(self) -> str:
         if os.uname().sysname == "Darwin":
-            return subprocess.run(
-                ["pbpaste"], capture_output=True, text=True
-            ).stdout
+            return subprocess.run(["pbpaste"], capture_output=True, text=True).stdout
         return ""
 
     # --- scheduled prompts (local JSON) ----------------------------------
@@ -1104,8 +1109,11 @@ class Bridge:
         except (OSError, ValueError):
             rows = []
         return [
-            {"name": r.get("name", ""), "path": r.get("path", ""),
-             "exists": Path(r.get("path", "")).is_dir()}
+            {
+                "name": r.get("name", ""),
+                "path": r.get("path", ""),
+                "exists": Path(r.get("path", "")).is_dir(),
+            }
             for r in rows
         ]
 
@@ -1280,13 +1288,19 @@ class Bridge:
         for r in self._load_extras():
             path = r.get("path", "")
             present = bool(r.get("exists"))
-            row = {"name": r.get("name") or Path(path).name, "path": path,
-                   "present": present, "pr": None}
+            row = {
+                "name": r.get("name") or Path(path).name,
+                "path": path,
+                "present": present,
+                "pr": None,
+            }
             if present:
                 row["branch"] = _git(path, "rev-parse", "--abbrev-ref", "HEAD") or "—"
                 status = _git(path, "status", "--porcelain")
                 row["dirty"] = len([ln for ln in status.splitlines() if ln.strip()])
-                counts = _git(path, "rev-list", "--left-right", "--count", "@{u}...HEAD")
+                counts = _git(
+                    path, "rev-list", "--left-right", "--count", "@{u}...HEAD"
+                )
                 parts = counts.split()
                 if len(parts) == 2:
                     row["behind"] = int(parts[0]) if parts[0].isdigit() else 0
