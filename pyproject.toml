@@ -5,6 +5,17 @@ description = "Alfred — a dignified butler-engineer AI companion. The open-sou
 authors = ["Haim Elbaz <haim@morning.co>"]
 license = "Apache-2.0"
 readme = "README.md"
+homepage = "https://github.com/elbazon/pennyworth"
+repository = "https://github.com/elbazon/pennyworth"
+documentation = "https://github.com/elbazon/pennyworth/tree/master/docs"
+keywords = ["ai", "assistant", "agent", "developer-tools", "claude", "cli", "butler"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Apache Software License",
+    "Topic :: Software Development",
+    "Environment :: Console",
+]
 packages = [{ include = "pennyworth", from = "src" }]
 include = [
     { path = "src/pennyworth/app/web/*", format = ["sdist", "wheel"] },

@@ -65,12 +65,25 @@ contract:
 2. Make your change, keeping the quality gate green.
 3. Update the docs in the same change when behaviour changes —
    `README.md` and `docs/architecture.md` should never drift behind the code.
-4. Open a pull request against `master` with a clear description: the context, why
+4. **Sign off your commits** with `git commit -s` (see Licensing below).
+5. Open a pull request against `master` with a clear description: the context, why
    this approach, and anything a reviewer should focus on.
 
 Small, focused pull requests are easier to review and merge than sprawling ones.
 
-## License
+## Licensing & sign-off
 
-By contributing, you agree that your contributions are licensed under the
-[Apache-2.0](LICENSE) license that covers the project.
+This project is open source under [Apache-2.0](LICENSE), created and maintained
+by Haim Elbaz. We keep contribution simple — **no CLA**. Instead, sign off each
+commit to certify you wrote the change and may submit it under the project's
+licence, per the [Developer Certificate of Origin](https://developercertificate.org/):
+
+```bash
+git commit -s -m "your message"      # appends a Signed-off-by line
+```
+
+By signing off and contributing, you agree your contribution is licensed under
+Apache-2.0. You retain copyright on your own contribution; it joins the project
+under the same terms, so the project — and its attribution to its author —
+remains open and intact. Please don't add the project's reserved names or
+branding to a fork you redistribute (see [TRADEMARK.md](TRADEMARK.md)).

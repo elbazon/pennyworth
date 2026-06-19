@@ -71,7 +71,7 @@ ALFRED_BIN="${{ALFRED_BIN:-}}"
 if [ -z "$ALFRED_BIN" ]; then
   for candidate in \
       "$HOME/.local/bin/alfred" \
-      "$HOME/.pipx/venvs/morning-cli/bin/alfred" \
+      "$HOME/.pipx/venvs/pennyworth/bin/alfred" \
       "/usr/local/bin/alfred" \
       "/opt/homebrew/bin/alfred"; do
     if [ -x "$candidate" ]; then

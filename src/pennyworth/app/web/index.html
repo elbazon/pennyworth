@@ -1019,7 +1019,7 @@
       <button id="navAbout" title="About Alfred — version and credits"><span>ℹ️</span>About</button>
     </nav>
     <div class="brandfoot">
-      <span id="morningLogo" title="Pennyworth on GitHub" style="cursor:pointer;font-weight:600;letter-spacing:.04em;color:var(--text-dim)">Pennyworth</span>
+      <span id="brandLink" title="Pennyworth on GitHub" style="cursor:pointer;font-weight:600;letter-spacing:.04em;color:var(--text-dim)">Pennyworth</span>
       <span id="footInfo"></span>
       <a id="updateBadge" hidden></a>
     </div>
@@ -1438,7 +1438,7 @@
   // raw href click navigates the whole window to that URL with no browser chrome
   // to get back: it swallows the app entirely. Intercept every http(s) link
   // click app-wide and hand the URL to the OS browser via open_url instead — the
-  // same reason the Morning-logo and PR links already route through open_url.
+  // same reason the footer wordmark and PR links already route through open_url.
   // Document-level (not just #chat) so links anywhere — drawer, panels — behave;
   // internal/hash links (no http scheme) are left alone to navigate normally.
   document.addEventListener("click", (ev) => {
@@ -3383,7 +3383,7 @@
   $("newChatBtn").addEventListener("click", () => createChat());
   // Footer wordmark → open the Pennyworth repo in the default browser (open_url, not a
   // raw href, which would navigate the webview away from the app).
-  $("morningLogo").addEventListener("click", () => api() && api().open_url("https://github.com/elbazon/pennyworth"));
+  $("brandLink").addEventListener("click", () => api() && api().open_url("https://github.com/elbazon/pennyworth"));
   $("hambBtn").addEventListener("click", () => {
     document.body.classList.toggle("sidehidden");
     $("hambBtn").title = document.body.classList.contains("sidehidden")

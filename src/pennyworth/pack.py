@@ -92,7 +92,7 @@ class Hand:
     environment, so tokens live in the host env, never in a pack manifest.
 
     Attributes:
-        name: How the tool server is referred to (e.g. ``"teamcity"``).
+        name: How the tool server is referred to (e.g. ``"github"``).
         summary: One line on what it gives Alfred hands on — when to reach for it.
         command: For a stdio server, the executable to spawn (e.g. ``"npx"``).
         args: Arguments passed to ``command``.
@@ -149,8 +149,8 @@ class Pack:
             Empty means no Repositories section.
         hands: The MCP tool servers the platform operates through, rendered as an
             index of "hands". Empty means no Hands section.
-        ci_provider: The platform's CI/CD provider (e.g. ``"TeamCity"``,
-            ``"GitHub Actions"``). When set, the brain gains a short CI section
+        ci_provider: The platform's CI/CD provider (e.g. ``"GitHub Actions"``,
+            ``"GitLab CI"``). When set, the brain gains a short CI section
             orienting Alfred for build/deploy diagnosis. Empty means no CI
             section. The *deep* CI knowledge (build-config ids, deploy recipes)
             belongs in a skill, and the tools to query CI in a hand — this seam

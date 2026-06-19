@@ -146,6 +146,20 @@ skills, team, repositories, hands (MCP, with live wiring into the host agent), a
 CI — is built and guarded by the clean-brain test. CI runs ruff + the test suite
 on every push and pull request across Python 3.11–3.13. Next: packaging for PyPI.
 
-## License
+## Contributing
 
-[Apache-2.0](LICENSE). Created by Haim Elbaz.
+Contributions are welcome — see **[CONTRIBUTING.md](CONTRIBUTING.md)**. By
+contributing you agree your work is licensed under Apache-2.0 (a one-line
+[DCO](https://developercertificate.org/) sign-off, `git commit -s`, certifies
+you wrote it). Fork, branch, and open a pull request.
+
+## License & credits
+
+**Created by Haim Elbaz**, with development assistance from Claude (Anthropic).
+
+Licensed under the **[Apache License 2.0](LICENSE)** — free to use, modify, and
+redistribute, including commercially, provided you keep the copyright notice and
+the [`NOTICE`](NOTICE) attribution. The names "Pennyworth" and "Alfred" and the
+branding are reserved — see **[TRADEMARK.md](TRADEMARK.md)**.
+
+Copyright © 2026 Haim Elbaz.

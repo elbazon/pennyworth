@@ -141,8 +141,16 @@ Next:
 - Packaging & distribution (PyPI/release wheels), contribution guide — the
   release step that makes `pipx install pennyworth` real for outside contributors.
 
-## 6. Open items
+## 6. Licensing
 
-- License copyright holder (the LICENSE currently credits the author + contributors).
+Apache-2.0, © 2026 Haim Elbaz (creator and maintainer). Attribution is binding
+via the [`NOTICE`](../NOTICE) file; the names "Pennyworth"/"Alfred" are reserved
+([`TRADEMARK.md`](../TRADEMARK.md)). Contributions are accepted under Apache-2.0
+with a DCO sign-off — no CLA — so contributors keep copyright on their own work
+while the project stays open and attributable to its author.
+
+## 7. Open items
+
 - Pack versioning and the core-version range a pack pins.
 - The manifest schema is a first cut and will grow with the contract.
+- Multi-provider support (OpenAI / local LLMs) behind the runner seam.
