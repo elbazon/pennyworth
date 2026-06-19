@@ -1,14 +1,19 @@
 """Launch the Pennyworth desktop app (Alfred) in a native window.
 
-A thin pywebview shell. ``pywebview`` is imported lazily inside :func:`main` so
-the package (and the CLI) work without the optional ``app`` extra installed.
-The web UI talks to :class:`~pennyworth.app.bridge.Bridge` via ``js_api`` and
-awaits each method's return value — no cross-thread event pushing.
+A pywebview shell. ``pywebview`` is imported lazily inside :func:`main` so the
+package (and the CLI) work without the optional ``app`` extra installed.
+
+The web UI is the full single-page app under ``web/``. It is loaded by **file
+URL** (not an inline ``html=`` string) so its relative assets — ``xterm.js``,
+``xterm.css``, the avatar — resolve against the same directory. The page talks
+to :class:`~pennyworth.app.bridge.Bridge` two ways: it ``await``s each
+``window.pywebview.api.*`` call, and the bridge pushes streaming events back
+into the page via ``window.evaluate_js("window.alfredEvent(...)")`` once
+:meth:`Bridge.attach_window` has wired the live window in.
 """
 
 from __future__ import annotations
 
-import base64
 import sys
 from pathlib import Path
 
@@ -26,38 +31,38 @@ def index_path() -> Path:
 
 
 def portrait_path() -> Path:
-    """Absolute path to Alfred's portrait."""
+    """Absolute path to Alfred's portrait / app avatar."""
     return _web_dir() / "alfred.png"
 
 
-def _portrait_data_uri() -> str:
-    """Alfred's portrait as an inline data URI, or ``""`` if missing.
+def index_url() -> str:
+    """The ``file://``-style URL for the page, with an mtime cache-bust.
 
-    Inlined so the self-contained ``html=`` page can show it without an
-    external asset URL.
+    WKWebView caches ``file://`` pages aggressively, so a wheel upgrade could
+    otherwise show the previous release's UI. The ``?v=<mtime>`` query busts the
+    cache whenever the file content changes. pywebview accepts a bare local path
+    here and serves the directory, so relative asset links resolve.
     """
-    png = portrait_path()
-    if not png.is_file():
-        return ""
-    encoded = base64.b64encode(png.read_bytes()).decode("ascii")
-    return f"data:image/png;base64,{encoded}"
-
-
-def render_html() -> str:
-    """The UI markup with Alfred's portrait inlined (``{{PORTRAIT}}`` replaced)."""
-    return index_path().read_text().replace("{{PORTRAIT}}", _portrait_data_uri())
+    index = index_path()
+    try:
+        tag = int(index.stat().st_mtime)
+    except OSError:
+        tag = 0
+    return f"{index}?v={tag}"
 
 
 def window_config() -> dict:
-    """pywebview ``create_window`` kwargs (excluding the page content itself).
+    """pywebview ``create_window`` kwargs (excluding ``js_api``).
 
-    Pure, so it can be tested without a GUI.
+    Pure, so it can be asserted in tests without a GUI. Carries ``url`` (the
+    file URL) rather than inline ``html`` — the page loads its own assets.
     """
     return {
         "title": WINDOW_TITLE,
-        "width": 1040,
-        "height": 720,
-        "min_size": (640, 480),
+        "url": index_url(),
+        "width": 1080,
+        "height": 760,
+        "min_size": (720, 520),
         "background_color": BACKGROUND,
     }
 
@@ -80,9 +85,11 @@ def main() -> int:
         print(f"UI asset missing: {index_path()}", file=sys.stderr)
         return 1
 
-    # The page is fully self-contained (all CSS/JS inline, portrait inlined as a
-    # data URI), so load its markup directly rather than via a file URL.
-    webview.create_window(html=render_html(), js_api=Bridge(), **window_config())
+    bridge = Bridge()
+    window = webview.create_window(js_api=bridge, **window_config())
+    # Hand the live window to the bridge so it can push streaming events into
+    # the page (window.alfredEvent). Must happen before the event loop starts.
+    bridge.attach_window(window)
     webview.start()
     return 0
 

@@ -115,6 +115,70 @@ class Bridge:
         self._lock = threading.Lock()
         self._ids = itertools.count(1)
         self._term_mgr = TermManager()
+        # The live pywebview window, wired by attach_window(). Used only to push
+        # streaming events into the page via window.alfredEvent(...). None in
+        # headless/unit-test use, where _emit is a no-op.
+        self._window = None
+        self._emit_q = None
+
+    # --- window wiring: server-pushed events -----------------------------
+
+    def attach_window(self, window) -> None:
+        """Wire the live pywebview window so the bridge can push events.
+
+        Called once by :func:`pennyworth.app.window.main` after the window is
+        created and before the event loop starts.
+        """
+        self._window = window
+        self._start_emitter()
+
+    def _start_emitter(self) -> None:
+        """Start the single thread that owns every ``evaluate_js`` push.
+
+        pywebview's ``evaluate_js`` blocks the calling thread on a main-thread
+        round-trip; with several chats streaming at once, parallel worker
+        threads contend on the one window and stall. Funnelling every event
+        through one FIFO queue means worker threads only ``put()`` (instant) and
+        keep reading their subprocess at full speed, while this lone consumer
+        delivers to the page one call at a time. Each event carries ``chatId``
+        so the page routes it to the right pane regardless of interleaving.
+        """
+        if self._emit_q is not None:
+            return
+        import queue
+
+        self._emit_q = queue.Queue()
+
+        def _drain() -> None:
+            while True:
+                event = self._emit_q.get()
+                window = self._window
+                if window is None:
+                    continue
+                try:
+                    window.evaluate_js(f"window.alfredEvent({json.dumps(event)})")
+                except Exception:  # a push failure must never kill the emitter
+                    pass
+
+        threading.Thread(target=_drain, daemon=True, name="alfred-emit").start()
+
+    def _emit(self, event: dict) -> None:
+        """Push one event object into the page (no-op without a window).
+
+        After :meth:`_start_emitter`, events are enqueued and delivered by the
+        single emit thread. Before that — and in unit tests that build the
+        bridge without a window — there is no queue, so deliver inline so a
+        synchronous fake window still sees the event.
+        """
+        if self._window is None:
+            return
+        if self._emit_q is not None:
+            self._emit_q.put(event)
+            return
+        try:
+            self._window.evaluate_js(f"window.alfredEvent({json.dumps(event)})")
+        except Exception:
+            pass
 
     # --- methods callable from JS via window.pywebview.api.* ---
 
