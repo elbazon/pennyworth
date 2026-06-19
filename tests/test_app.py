@@ -317,6 +317,22 @@ def test_index_url_carries_cache_bust():
     assert "?v=" in window.index_url()
 
 
+@pytest.mark.xfail(
+    reason="Bridge rebuild to the production 63-method push contract is pending "
+    "(see docs/PORTING_GUI.md). This test goes green when every api() call the "
+    "page makes has a matching Bridge method — the mechanical definition of done.",
+    strict=False,
+)
+def test_bridge_implements_every_method_the_ui_calls():
+    """Every window.pywebview.api.<m>() the page calls must exist on Bridge."""
+    import re
+
+    html = window.index_path().read_text()
+    called = set(re.findall(r"api\(\)\.([a-zA-Z_][a-zA-Z0-9_]*)\s*\(", html))
+    missing = sorted(m for m in called if not hasattr(Bridge, m))
+    assert not missing, f"Bridge is missing {len(missing)} UI methods: {missing}"
+
+
 def test_ui_proprietary_font_and_brand_chrome_removed():
     """De-branding that IS done: no proprietary Ploni font, no Morning logo asset,
     no morning.co link, no 'Made at Morning' footer."""
