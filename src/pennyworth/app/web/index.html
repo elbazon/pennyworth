@@ -1011,8 +1011,8 @@
       <button id="navBatcave" title="Your configured repositories at a glance — each one's branch and uncommitted changes"><span>🦇</span>Batcave</button>
       <button id="navSkills" title="Alfred's platform knowledge — skills that load automatically by topic"><span>⚡</span>Skills</button>
       <button id="navMcp" title="MCP connectors that give Alfred new hands — TeamCity, Jira, AWS docs, Sentry, claude.ai"><span>🔌</span>Connectors</button>
-      <button id="navUsage" title="Usage — your Claude subscription quotas" style="display:none"><span>📊</span>Usage<span class="usagepill" id="usagePill" hidden></span></button>
-      <button id="navStats" title="Your Alfred + Claude activity, mined locally from session history"><span>📈</span>Stats</button>
+      <button id="navUsage" title="Usage — your Claude subscription quotas"><span>📊</span>Usage<span class="usagepill" id="usagePill" hidden></span></button>
+      <button id="navStats" title="Your Alfred + Claude activity, mined locally from session history" style="display:none"><span>📈</span>Stats</button>
       <button id="navSched" title="Scheduled prompts — Alfred runs them at a chosen time while the app is open"><span>⏰</span>Scheduled</button>
       <button id="navSettings" title="Profile, appearance &amp; theme, repository paths"><span>⚙️</span>Settings</button>
       <button id="navAbout" title="About Alfred — version and credits"><span>ℹ️</span>About</button>
@@ -2415,6 +2415,13 @@
     }
     const chat = chats.get(e.chatId);
     if (!chat) return;
+    if (e.type === "model") {
+      // The resolved model for this turn (replaces "auto" once the agent picks).
+      chat.turnModel = e.model;
+      if (chat === activeChat && chat.status)
+        chatStatus(chat, "thinking… (" + e.model + ")");
+      return;
+    }
     if (e.type === "stream") { streamEvent(chat, e); return; }
     switch (e.type) {
       case "status": chatStatus(chat, e.text); break;

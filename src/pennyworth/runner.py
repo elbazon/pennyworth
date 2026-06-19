@@ -262,6 +262,7 @@ def stream_events(
     model: str | None = None,
     cwd: str | None = None,
     profile: Profile = NULL_PROFILE,
+    extended_thinking: bool = False,
 ) -> int:
     """Run the host agent and deliver structured events via ``on_event``.
 
@@ -279,6 +280,11 @@ def stream_events(
     extra: list[str] = list(_STREAM_JSON_ARGS) if structured else []
     if model and structured:
         extra += ["--model", model]
+    if extended_thinking and structured:
+        # Visible extended thinking. `summarized` is what flips the model from
+        # signature-only to real thinking content — `--thinking adaptive` alone
+        # returns zero thinking text. Both are stock claude-CLI flags.
+        extra += ["--thinking", "adaptive", "--thinking-display", "summarized"]
     cmd = build_command(
         request,
         system_prompt,

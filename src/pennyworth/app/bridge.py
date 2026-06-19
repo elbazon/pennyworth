@@ -417,6 +417,7 @@ class Bridge:
             r["path"] for r in self._load_extras()
             if r.get("exists") and r["path"] != chat.get("cwd")
         ]
+        want_thinking = bool(self._load_settings().get("show_thinking"))
         reply: list[str] = []
         turn_model = {"id": chat["model"]}
         interrupted = chat.get("interrupt")
@@ -438,6 +439,9 @@ class Bridge:
             kind = ev.get("kind")
             if kind == "model":
                 turn_model["id"] = ev.get("model") or chat["model"]
+                # Surface the actually-used model so the UI replaces "auto" with
+                # the resolved id (e.g. claude-opus-4-8) for this turn.
+                emit({"type": "model", "model": turn_model["id"]})
             elif kind == "text":
                 reply.append(ev.get("text", ""))
                 emit({"type": "stream", "kind": "text", "text": ev.get("text", "")})
@@ -472,6 +476,7 @@ class Bridge:
                 cwd=chat.get("cwd"),
                 add_dirs=add_dirs,
                 profile=self._profile_provider(),
+                extended_thinking=want_thinking,
             )
             ok = code == 0
             _diag(f"_run_turn: runner exit={code} replyLen={len(''.join(reply))}")
@@ -1141,7 +1146,49 @@ class Bridge:
         return {"ok": False, "error": "process control is not in the open-source build"}
 
     def get_usage(self) -> dict:
-        return {"error": "subscription usage is not available in the open-source build"}
+        """Claude subscription quotas, read from Anthropic via the Claude Code
+        keychain token. ``{tier, email, quotas[], sessionCost, extra?}`` or
+        ``{error}`` when the CLI isn't signed in / the call fails."""
+        from pennyworth.app import usage as _usage
+
+        try:
+            data = _usage.fetch_usage()
+        except _usage.UsageError as exc:
+            return {"error": str(exc)}
+        status = _usage.fetch_auth_status()
+        quotas = []
+        labels = [
+            ("five_hour", "5-hour"),
+            ("seven_day", "7-day"),
+            ("seven_day_opus", "7-day (Opus)"),
+            ("seven_day_sonnet", "7-day (Sonnet)"),
+        ]
+        for key, label in labels:
+            block = data.get(key) or {}
+            if not block:
+                continue
+            quotas.append(
+                {
+                    "label": label,
+                    "pct": float(block.get("utilization") or 0),
+                    "resets": _humanize_reset(block.get("resets_at", "")),
+                }
+            )
+        out = {
+            "tier": str(status.get("subscriptionType", "") or "").lower(),
+            "email": status.get("email", ""),
+            "quotas": quotas,
+            "sessionCost": self._session_cost,
+        }
+        extra = data.get("extra_usage") or {}
+        if extra.get("is_enabled"):
+            out["extra"] = {
+                "pct": float(extra.get("utilization") or 0),
+                "used": float(extra.get("used_credits") or 0),
+                "limit": float(extra.get("monthly_limit") or 0),
+                "currency": extra.get("currency", "USD"),
+            }
+        return out
 
     def list_mcp(self, force: bool = False) -> dict:
         return {"servers": [], "stderr": "", "cached": False}
@@ -1174,6 +1221,26 @@ class Bridge:
 
     def stop_dictation(self) -> bool:
         return False
+
+
+def _humanize_reset(iso: str) -> str:
+    """A terse 'in 2h 14m' / 'resetting now' from an ISO reset timestamp."""
+    if not iso:
+        return ""
+    import datetime
+
+    try:
+        when = datetime.datetime.fromisoformat(iso.replace("Z", "+00:00"))
+        now = datetime.datetime.now(datetime.timezone.utc)
+        secs = (when - now).total_seconds()
+    except (ValueError, TypeError):
+        return ""
+    if secs <= 0:
+        return "resetting now"
+    hours, mins = int(secs // 3600), int((secs % 3600) // 60)
+    if hours:
+        return f"in {hours}h {mins}m"
+    return f"in {mins}m"
 
 
 def _humanize_age(ts: float) -> str:

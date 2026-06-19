@@ -359,7 +359,10 @@ def test_platform_panels_return_safe_shapes(tmp_path, monkeypatch):
     assert b.list_slash_commands() == []
     assert b.list_versions()["running"]
     assert b.check_for_update()["available"] is False
-    assert "error" in b.get_usage()
+    # get_usage now reads real Claude usage; either it errors (not signed in)
+    # or returns the quota shape — both are valid, never a crash.
+    usage = b.get_usage()
+    assert "error" in usage or "quotas" in usage
     assert "error" in b.run_slash("/whatever")
     assert b.start_dictation() is False
 
