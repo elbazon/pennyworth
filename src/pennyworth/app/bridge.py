@@ -410,6 +410,13 @@ class Bridge:
         chat["messages"].append({"role": "user", "text": request_text})
         request = _compose(chat["messages"])
         model_id = _MODEL_TO_ID.get(chat["model"], None)
+        # Hand the agent every configured repo as an extra working directory, so
+        # Alfred can read and operate on them rather than treating them as
+        # "outside the workspace". The chat's own cwd is passed separately.
+        add_dirs = [
+            r["path"] for r in self._load_extras()
+            if r.get("exists") and r["path"] != chat.get("cwd")
+        ]
         reply: list[str] = []
         turn_model = {"id": chat["model"]}
         interrupted = chat.get("interrupt")
@@ -463,6 +470,7 @@ class Bridge:
                 on_event=on_event,
                 model=model_id,
                 cwd=chat.get("cwd"),
+                add_dirs=add_dirs,
                 profile=self._profile_provider(),
             )
             ok = code == 0
@@ -1105,16 +1113,29 @@ class Bridge:
     # --- platform-coupled panels: graceful, shape-correct degradation ----
 
     def get_batcave(self, force: bool = False) -> dict:
-        # No local DevOps stack in the open-source core; report an empty,
-        # well-formed snapshot so the panel renders rather than errors.
-        return {
-            "repos": [],
-            "docker": {},
-            "localstack": {},
-            "deployed": None,
-            "cached": False,
-            "unavailable": True,
-        }
+        """The open-source Batcave: configured repositories and their git state.
+
+        No Docker / LocalStack / deploy / data-platform sections — those belong
+        to a platform pack, not the core. Each repo row carries the keys the
+        page's repo card reads: name, present, path, branch, dirty, ahead/behind.
+        """
+        repos = []
+        for r in self._load_extras():
+            path = r.get("path", "")
+            present = bool(r.get("exists"))
+            row = {"name": r.get("name") or Path(path).name, "path": path,
+                   "present": present, "pr": None}
+            if present:
+                row["branch"] = _git(path, "rev-parse", "--abbrev-ref", "HEAD") or "—"
+                status = _git(path, "status", "--porcelain")
+                row["dirty"] = len([ln for ln in status.splitlines() if ln.strip()])
+                counts = _git(path, "rev-list", "--left-right", "--count", "@{u}...HEAD")
+                parts = counts.split()
+                if len(parts) == 2:
+                    row["behind"] = int(parts[0]) if parts[0].isdigit() else 0
+                    row["ahead"] = int(parts[1]) if parts[1].isdigit() else 0
+            repos.append(row)
+        return {"repos": repos, "env": {}, "cached": False}
 
     def pm2_action(self, name: str, action: str) -> dict:
         return {"ok": False, "error": "process control is not in the open-source build"}

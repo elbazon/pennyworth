@@ -103,10 +103,66 @@ def window_config() -> dict:
     }
 
 
+def _adopt_identity_pre_launch() -> None:
+    """Rename the process from "Python" to "Alfred" in the menu bar (macOS).
+
+    A bare python process inherits the interpreter's bundle identity, so the
+    app menu and Cmd-Tab say "Python". Rewriting CFBundleName in the live
+    bundle info dictionary before NSApplication finishes launching fixes it.
+    Best-effort; a no-op without PyObjC or off macOS.
+    """
+    try:
+        from Foundation import NSBundle
+
+        bundle = NSBundle.mainBundle()
+        info = bundle.localizedInfoDictionary() or bundle.infoDictionary()
+        if info is not None:
+            info["CFBundleName"] = "Alfred"
+            info["CFBundleDisplayName"] = "Alfred"
+            info["CFBundleIdentifier"] = "io.pennyworth.alfred"
+    except Exception:
+        pass
+
+
+def _adopt_identity_post_launch() -> None:
+    """Set the Dock icon to Alfred's portrait and make Alfred a foreground app.
+
+    pywebview runs this ``webview.start(func=...)`` callback on a worker thread;
+    AppKit calls must be marshalled to the main thread. ``setActivationPolicy_(0)``
+    (NSApplicationActivationPolicyRegular) makes the terminal-launched process a
+    proper foreground app so a single click lands. Best-effort throughout.
+    """
+    try:
+        from PyObjCTools import AppHelper
+    except Exception:
+        return
+
+    def _on_main() -> None:
+        try:
+            from AppKit import NSApplication, NSImage
+            from Foundation import NSProcessInfo
+
+            app = NSApplication.sharedApplication()
+            icon = NSImage.alloc().initWithContentsOfFile_(str(portrait_path()))
+            if icon:
+                app.setApplicationIconImage_(icon)
+            NSProcessInfo.processInfo().setProcessName_("Alfred")
+            app.setActivationPolicy_(0)  # Regular: a real foreground app
+            app.activateIgnoringOtherApps_(True)
+            wins = app.windows()
+            if wins:
+                wins[0].makeKeyAndOrderFront_(None)
+        except Exception:
+            pass
+
+    AppHelper.callAfter(_on_main)
+
+
 def main() -> int:
     """Open the desktop window. Blocks until the window is closed."""
     _launch_log(f"start (index mtime={int(index_path().stat().st_mtime)})")
     _purge_webkit_cache()
+    _adopt_identity_pre_launch()
     try:
         import webview
     except ImportError:
@@ -128,7 +184,8 @@ def main() -> int:
     # Hand the live window to the bridge so it can push streaming events into
     # the page (window.alfredEvent). Must happen before the event loop starts.
     bridge.attach_window(window)
-    webview.start()
+    # Adopt the Alfred dock icon + foreground activation once the GUI is up.
+    webview.start(_adopt_identity_post_launch)
     return 0
 
 

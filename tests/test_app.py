@@ -339,9 +339,22 @@ def test_scheduled_rejects_bad_datetime():
 # --- platform-coupled panels degrade gracefully (shape-correct) ------------
 
 
-def test_platform_panels_return_safe_shapes():
+def test_batcave_surfaces_configured_repos(tmp_path, monkeypatch):
+    monkeypatch.setenv("PENNYWORTH_HOME", str(tmp_path))
+    repo = tmp_path / "myrepo"
+    repo.mkdir()
     b = _bridge()
-    assert b.get_batcave()["unavailable"] is True
+    b.save_extra_repos([{"name": "myrepo", "path": str(repo)}])
+    repos = b.get_batcave()["repos"]
+    assert len(repos) == 1
+    assert repos[0]["name"] == "myrepo"
+    assert repos[0]["present"] is True
+
+
+def test_platform_panels_return_safe_shapes(tmp_path, monkeypatch):
+    monkeypatch.setenv("PENNYWORTH_HOME", str(tmp_path))
+    b = _bridge()
+    assert b.get_batcave()["repos"] == []  # no platform env sections in OSS
     assert b.list_mcp()["servers"] == []
     assert b.list_slash_commands() == []
     assert b.list_versions()["running"]

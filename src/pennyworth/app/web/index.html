@@ -1008,10 +1008,10 @@
       <div id="chatList"></div>
     </div>
     <nav>
-      <button id="navBatcave" title="Everything local at a glance — every repo's branch, changes, open PR &amp; CI, plus Docker, LocalStack and the data platform"><span>🦇</span>Batcave</button>
+      <button id="navBatcave" title="Your configured repositories at a glance — each one's branch and uncommitted changes"><span>🦇</span>Batcave</button>
       <button id="navSkills" title="Alfred's platform knowledge — skills that load automatically by topic"><span>⚡</span>Skills</button>
       <button id="navMcp" title="MCP connectors that give Alfred new hands — TeamCity, Jira, AWS docs, Sentry, claude.ai"><span>🔌</span>Connectors</button>
-      <button id="navUsage" title="Usage — your Claude subscription quotas"><span>📊</span>Usage<span class="usagepill" id="usagePill" hidden></span></button>
+      <button id="navUsage" title="Usage — your Claude subscription quotas" style="display:none"><span>📊</span>Usage<span class="usagepill" id="usagePill" hidden></span></button>
       <button id="navStats" title="Your Alfred + Claude activity, mined locally from session history"><span>📈</span>Stats</button>
       <button id="navSched" title="Scheduled prompts — Alfred runs them at a chosen time while the app is open"><span>⏰</span>Scheduled</button>
       <button id="navSettings" title="Profile, appearance &amp; theme, repository paths"><span>⚙️</span>Settings</button>
@@ -1107,11 +1107,9 @@
     <section class="view" id="viewBatcave">
       <div class="panel"><div class="col">
         <h2>🦇 Batcave</h2>
-        <div class="sub">Everything local, at a glance — every repo's branch,
-          changes, open PR and CI verdict, plus the state of your Docker stack,
-          LocalStack, frontend dev servers (pm2), and the data platform
-          (Databricks &amp; OpenMetadata). Read-only, except you can start, stop,
-          or restart the frontend apps from their chips.</div>
+        <div class="sub">Your configured repositories at a glance — each one's
+          branch and uncommitted changes. Add repositories in
+          Settings → Repositories.</div>
         <div class="actions"><button class="btn secondary" id="batcaveRefresh">Refresh</button></div>
         <div id="batcaveBody"><div class="sub">Casting light into the Batcave…</div></div>
       </div></div>
@@ -1226,10 +1224,10 @@
         <div class="sub" id="settingsSub">Your Alfred profile.</div>
         <div class="card" id="settingsCard"></div>
 
-        <h2 style="margin-top:28px">Repository paths</h2>
-        <div class="sub">Where your local repos live. Alfred reads and writes code
-          here, and morning-cli drives the Docker stack from them.
-          <b class="reqstar">*</b> marks the ones nothing works without.</div>
+        <h2 style="margin-top:28px">Repositories</h2>
+        <div class="sub">Where your local repositories live. Alfred reads and
+          writes code in them, and they show up in the Batcave. Each is handed
+          to Alfred as a working directory so he can operate in it directly.</div>
         <div id="dirWarn" class="warnbox" hidden></div>
         <div class="card" id="dirCard"></div>
 
@@ -4005,68 +4003,13 @@
       card.append(acts);
       body.append(card);
     }
-    const d = env.docker || {}, ls = env.localstack || {}, dep = env.deployed;
-    const ec = el("div", "card");
-    ec.append(el("div", "nm", "Local environment"));
-    const erow = (label, val, cls) => {
-      const row = el("div", "bcenv");
-      row.append(el("span", "bcenvlabel", label));
-      row.append(el("span", "bcenvval " + (cls || ""), val));
-      ec.append(row);
-    };
-    erow("Docker", d.up ? "up · " + (d.running || 0) + " containers" : "down",
-      d.up ? "ok" : "bad");
-    erow("LocalStack", ls.up
-      ? "up · " + (ls.runningCount || 0) + "/" + (ls.serviceCount || 0) + " services"
-      : "down", ls.up ? "ok" : "bad");
-    erow("Deployed", dep != null ? dep + " state objects" : "—", "");
-    // Frontend dev servers (pm2) live inside this card, alongside Docker and
-    // LocalStack: a summary row, then the per-app chip grid beneath it.
-    erow("Frontend", pm2.available
-      ? "pm2 · " + (pm2.online || 0) + "/" + (pm2.total || 0) + " online"
-      : "pm2 not running", pm2.available ? "ok" : "bad");
-    const chips = buildFrontendChips();
-    // The Frontend row is no longer ec's last child once chips follow it, so
-    // the `.bcenv:last-child` border-removal misses it — clear it by hand, or a
-    // rule draws between the "pm2 · X/Y" label and the chip grid beneath it.
-    if (chips) { ec.lastElementChild.style.borderBottom = "none"; ec.append(chips); }
-    body.append(ec);
-
-    // Data platform — Databricks prod + OpenMetadata. Read-only, like the rest
-    // of the Batcave: auth state, warehouse state, catalogue reachability.
-    const dp = env.dataPlatform || {}, db = dp.databricks || {}, omd = dp.openmetadata || {};
-    const dc = el("div", "card");
-    dc.append(el("div", "nm", "Data platform"));
-    const drow = (label, val, cls, onClick) => {
-      const row = el("div", "bcenv");
-      row.append(el("span", "bcenvlabel", label));
-      const v = el("span", "bcenvval " + (cls || ""), val);
-      if (onClick) { v.style.cursor = "pointer"; v.addEventListener("click", onClick); }
-      row.append(v);
-      dc.append(row);
-    };
-    if (!db.available) {
-      drow("Databricks", "CLI not installed", "");
-    } else if (db.authenticated) {
-      drow("Databricks", "authed · " + (db.profile || "") +
-        (db.user ? " · " + db.user : ""), "ok");
-      if (db.warehouse) {
-        // Serverless warehouse: RUNNING is good, STOPPED is normal (idle), a
-        // transition is in-between, anything else is a problem.
-        const st = db.warehouse.state || "?";
-        const cls = st === "RUNNING" ? "ok"
-          : (st === "STARTING" || st === "STOPPING") ? "warn"
-          : st === "STOPPED" ? "" : "bad";
-        drow("Warehouse", st + " · " + (db.warehouse.name || db.warehouse.id), cls);
-      }
-    } else {
-      drow("Databricks", "token expired · " + (db.profile || ""), "bad");
+    // The open-source Batcave shows only your configured repositories and
+    // their git state — no Docker / LocalStack / deploy / data-platform
+    // sections (those belong to a platform pack, not the core).
+    if (!(data.repos || []).length) {
+      body.append(el("div", "sub",
+        "No repositories configured. Add one in Settings → Repositories."));
     }
-    if (omd && Object.keys(omd).length) {
-      drow("OpenMetadata", omd.up ? "up" : "down" + (omd.code ? " · " + omd.code : ""),
-        omd.up ? "ok" : "bad", omd.url ? () => api().open_url(omd.url) : null);
-    }
-    body.append(dc);
   }
 
   // ---- skills ----
