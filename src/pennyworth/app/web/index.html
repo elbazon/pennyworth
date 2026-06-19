@@ -1010,6 +1010,7 @@
     <nav>
       <button id="navBatcave" title="Your configured repositories at a glance — each one's branch and uncommitted changes"><span>🦇</span>Batcave</button>
       <button id="navSkills" title="Alfred's platform knowledge — skills that load automatically by topic"><span>⚡</span>Skills</button>
+      <button id="navKnowledge" title="Your domain knowledge — injected into Alfred's prompt every turn"><span>📚</span>Knowledge</button>
       <button id="navMcp" title="MCP connectors that give Alfred new hands — TeamCity, Jira, AWS docs, Sentry, claude.ai"><span>🔌</span>Connectors</button>
       <button id="navUsage" title="Usage — your Claude subscription quotas"><span>📊</span>Usage<span class="usagepill" id="usagePill" hidden></span></button>
       <button id="navStats" title="Your Alfred + Claude activity, mined locally from session history" style="display:none"><span>📈</span>Stats</button>
@@ -1137,6 +1138,35 @@
           </div>
         </div>
         <div id="skillList"></div>
+      </div></div>
+    </section>
+
+    <!-- Knowledge -->
+    <section class="view" id="viewKnowledge">
+      <div class="panel"><div class="col">
+        <h2>📚 Knowledge</h2>
+        <div class="sub">Teach this Alfred about your domain. Every enabled entry
+          is injected into his prompt at the start of each turn — so he speaks
+          your platform's language without a code change. Inline notes are stored
+          locally; file-linked entries are re-read live each turn.</div>
+        <div class="actions">
+          <button class="btn" id="newKnowBtn">＋ New entry</button>
+          <button class="btn secondary" id="importKnowBtn">Import file…</button>
+          <button class="btn secondary" id="linkKnowBtn">Link a file…</button>
+        </div>
+        <div id="knowForm" hidden class="card">
+          <div class="nm" id="knowFormTitle">New knowledge entry</div>
+          <div class="formgrid">
+            <label>Title</label><input id="knowTitle" placeholder="e.g. Our billing domain" />
+            <label>Knowledge</label><textarea id="knowBody" rows="8"
+              placeholder="Anything Alfred should treat as authoritative: glossary, conventions, architecture, do's and don'ts…"></textarea>
+          </div>
+          <div class="localactions">
+            <button class="btn" id="knowSave">Save</button>
+            <button class="btn secondary" id="knowCancel">Cancel</button>
+          </div>
+        </div>
+        <div id="knowList"></div>
       </div></div>
     </section>
 
@@ -3857,6 +3887,7 @@
 
   // ---- panel navigation ----
   const views = { navBatcave: "viewBatcave", navSkills: "viewSkills",
+                  navKnowledge: "viewKnowledge",
                   navMcp: "viewMcp", navUsage: "viewUsage", navStats: "viewStats",
                   navSched: "viewSched", navSettings: "viewSettings",
                   navAbout: "viewAbout" };
@@ -3868,6 +3899,7 @@
       $(view).classList.add("active");
       if (view === "viewBatcave") loadBatcave();
       if (view === "viewSkills") loadSkills();
+      if (view === "viewKnowledge") loadKnowledge();
       if (view === "viewMcp") loadMcp();
       if (view === "viewUsage") loadUsage();
       if (view === "viewStats") loadStats();
@@ -4020,6 +4052,77 @@
   }
 
   // ---- skills ----
+  // ---- Knowledge: user-supplied domain context, injected each turn --------
+  let knowEditId = null;
+  function showKnowForm(entry) {
+    knowEditId = entry ? entry.id : null;
+    $("knowFormTitle").textContent = entry ? "Edit entry" : "New knowledge entry";
+    $("knowTitle").value = entry ? (entry.title || "") : "";
+    $("knowBody").value = entry ? (entry.body || "") : "";
+    $("knowBody").disabled = !!(entry && entry.path);
+    $("knowBody").placeholder = (entry && entry.path)
+      ? "(linked file — edit the file on disk; it's re-read live each turn)"
+      : "Anything Alfred should treat as authoritative…";
+    $("knowForm").hidden = false;
+    $("knowTitle").focus();
+  }
+  async function loadKnowledge() {
+    if (!api()) return;
+    const rows = await api().list_knowledge();
+    const list = $("knowList");
+    list.innerHTML = "";
+    if (!rows.length)
+      list.append(el("div", "sub", "No knowledge yet. Add an entry, import a file, or link one."));
+    for (const k of rows) {
+      const c = el("div", "card" + (k.enabled ? "" : " absent"));
+      const nm = el("div", "nm");
+      nm.append("📚 " + k.title);
+      nm.append(" ", el("span", "localbadge", k.source === "file" ? "file" : "inline"));
+      nm.append(" ", el("span", "ds", k.chars + " chars"));
+      c.append(nm);
+      if (k.preview) c.append(el("div", "ds", k.preview + (k.chars > 160 ? "…" : "")));
+      if (k.source === "file" && k.path) c.append(el("div", "ds", k.path));
+      const acts = el("div", "localactions");
+      const tog = el("button", "btn secondary", k.enabled ? "Disable" : "Enable");
+      tog.addEventListener("click", async () => {
+        await api().update_knowledge(k.id, null, null, !k.enabled);
+        loadKnowledge();
+      });
+      acts.append(tog);
+      if (k.source === "inline") {
+        const ed = el("button", "btn secondary", "Edit");
+        ed.addEventListener("click", async () => showKnowForm(await api().get_knowledge(k.id)));
+        acts.append(ed);
+      }
+      const ex = el("button", "btn secondary", "Export");
+      ex.addEventListener("click", () => api().export_knowledge(k.id));
+      const del = el("button", "btn secondary", "Delete");
+      del.addEventListener("click", async () => { await api().delete_knowledge(k.id); loadKnowledge(); });
+      acts.append(ex, del);
+      c.append(acts);
+      list.append(c);
+    }
+  }
+  $("newKnowBtn").addEventListener("click", () => showKnowForm(null));
+  $("knowCancel").addEventListener("click", () => { $("knowForm").hidden = true; });
+  $("knowSave").addEventListener("click", async () => {
+    const title = $("knowTitle").value.trim();
+    const body = $("knowBody").value;
+    if (!title) return;
+    if (knowEditId) await api().update_knowledge(knowEditId, title, body, null);
+    else await api().add_knowledge(title, body);
+    $("knowForm").hidden = true;
+    loadKnowledge();
+  });
+  $("importKnowBtn").addEventListener("click", async () => {
+    const r = await api().import_knowledge(false);
+    if (r && r.error) setStatus("⚠ " + r.error); else loadKnowledge();
+  });
+  $("linkKnowBtn").addEventListener("click", async () => {
+    const r = await api().import_knowledge(true);
+    if (r && r.error) setStatus("⚠ " + r.error); else loadKnowledge();
+  });
+
   async function loadSkills() {
     if (!api()) return;
     const skills = await api().list_skills();

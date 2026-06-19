@@ -336,6 +336,69 @@ def test_scheduled_rejects_bad_datetime():
     assert "error" in _bridge().add_scheduled("x", "not-a-date")
 
 
+# --- domain knowledge (CRUD + prompt injection) ----------------------------
+
+
+def test_knowledge_crud_and_injection(tmp_path, monkeypatch):
+    monkeypatch.setenv("PENNYWORTH_HOME", str(tmp_path))
+    b = _bridge()
+    assert b.list_knowledge() == []
+    assert b._knowledge_text() == ""
+
+    added = b.add_knowledge("Billing domain", "An invoice is immutable once issued.")
+    assert added["ok"] is True
+    eid = added["entry"]["id"]
+
+    rows = b.list_knowledge()
+    assert len(rows) == 1 and rows[0]["title"] == "Billing domain"
+    assert rows[0]["source"] == "inline" and rows[0]["enabled"] is True
+
+    # enabled knowledge flows into the composed prompt section
+    assert "invoice is immutable" in b._knowledge_text()
+
+    # disabling removes it from the injected text but keeps the entry
+    b.update_knowledge(eid, None, None, False)
+    assert b._knowledge_text() == ""
+    assert len(b.list_knowledge()) == 1
+
+    b.update_knowledge(eid, "Billing", "Invoices are immutable.", True)
+    assert b.get_knowledge(eid)["title"] == "Billing"
+    assert "Invoices are immutable" in b._knowledge_text()
+
+    assert b.delete_knowledge(eid)["ok"] is True
+    assert b.list_knowledge() == []
+
+
+def test_knowledge_file_link_is_read_live(tmp_path, monkeypatch):
+    monkeypatch.setenv("PENNYWORTH_HOME", str(tmp_path))
+    kf = tmp_path / "domain.md"
+    kf.write_text("Customers are called 'owners'.")
+    b = _bridge()
+    b.add_knowledge("Glossary", path=str(kf))
+    assert "owners" in b._knowledge_text()
+    # editing the linked file changes what gets injected, with no re-import
+    kf.write_text("Owners hold one or more businesses.")
+    assert "businesses" in b._knowledge_text()
+
+
+def test_run_turn_injects_knowledge(tmp_path, monkeypatch):
+    """A turn passes enabled knowledge to the runner as extra_knowledge."""
+    monkeypatch.setenv("PENNYWORTH_HOME", str(tmp_path))
+    captured = {}
+
+    def fake_stream_events(request, pack, *, on_event, **kw):
+        captured.update(kw)
+        on_event({"kind": "text", "text": "ok"})
+        on_event({"kind": "result", "cost": None, "error": False})
+        return 0
+
+    monkeypatch.setattr("pennyworth.runner.stream_events", fake_stream_events)
+    b = _bridge()
+    b.add_knowledge("Domain", "An owner is a tenant.")
+    _run_turn_sync(b, "c1", "hi")
+    assert "owner is a tenant" in captured.get("extra_knowledge", "")
+
+
 # --- platform-coupled panels degrade gracefully (shape-correct) ------------
 
 

@@ -263,6 +263,7 @@ def stream_events(
     cwd: str | None = None,
     profile: Profile = NULL_PROFILE,
     extended_thinking: bool = False,
+    extra_knowledge: str = "",
 ) -> int:
     """Run the host agent and deliver structured events via ``on_event``.
 
@@ -275,6 +276,13 @@ def stream_events(
     127 if the agent executable is missing.
     """
     system_prompt = build_system_prompt(pack, chat_mode=False, profile=profile)
+    if extra_knowledge.strip():
+        system_prompt += (
+            "\n\n# User-provided domain knowledge\n"
+            "The user has supplied the following knowledge about their domain. "
+            "Treat it as authoritative context for this conversation.\n\n"
+            + extra_knowledge.strip()
+        )
     agent = agent_command()
     structured = _speaks_claude_protocol(agent)
     extra: list[str] = list(_STREAM_JSON_ARGS) if structured else []

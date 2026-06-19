@@ -418,6 +418,7 @@ class Bridge:
             if r.get("exists") and r["path"] != chat.get("cwd")
         ]
         want_thinking = bool(self._load_settings().get("show_thinking"))
+        knowledge = self._knowledge_text()
         reply: list[str] = []
         turn_model = {"id": chat["model"]}
         interrupted = chat.get("interrupt")
@@ -477,6 +478,7 @@ class Bridge:
                 add_dirs=add_dirs,
                 profile=self._profile_provider(),
                 extended_thinking=want_thinking,
+                extra_knowledge=knowledge,
             )
             ok = code == 0
             _diag(f"_run_turn: runner exit={code} replyLen={len(''.join(reply))}")
@@ -1114,6 +1116,148 @@ class Bridge:
         except OSError as exc:
             return {"error": str(exc)}
         return self.get_dir_paths()
+
+    # --- domain knowledge (injected into Alfred's prompt at runtime) -----
+
+    def _knowledge_path(self) -> Path:
+        return self._app_dir() / "knowledge.json"
+
+    def _load_knowledge(self) -> list[dict]:
+        try:
+            data = json.loads(self._knowledge_path().read_text())
+            return data if isinstance(data, list) else []
+        except (OSError, ValueError):
+            return []
+
+    def _save_knowledge(self, entries: list[dict]) -> None:
+        self._app_dir().mkdir(parents=True, exist_ok=True)
+        self._knowledge_path().write_text(json.dumps(entries, indent=2))
+
+    def _entry_body(self, entry: dict) -> str:
+        """The live text of an entry — read fresh from disk for file-backed ones."""
+        if entry.get("path"):
+            try:
+                return Path(entry["path"]).read_text(errors="replace")
+            except OSError:
+                return ""
+        return entry.get("body", "")
+
+    def _knowledge_text(self) -> str:
+        """All enabled knowledge entries composed into one prompt section."""
+        parts = []
+        for e in self._load_knowledge():
+            if not e.get("enabled", True):
+                continue
+            body = self._entry_body(e).strip()
+            if body:
+                parts.append(f"## {e.get('title') or 'Untitled'}\n{body}")
+        return "\n\n".join(parts)
+
+    def list_knowledge(self) -> list[dict]:
+        """Knowledge entries (without full bodies) for the panel list."""
+        rows = []
+        for e in self._load_knowledge():
+            body = self._entry_body(e)
+            rows.append(
+                {
+                    "id": e.get("id"),
+                    "title": e.get("title") or "Untitled",
+                    "enabled": bool(e.get("enabled", True)),
+                    "source": "file" if e.get("path") else "inline",
+                    "path": e.get("path", ""),
+                    "chars": len(body),
+                    "preview": body[:160],
+                }
+            )
+        return rows
+
+    def get_knowledge(self, entry_id: str) -> dict:
+        for e in self._load_knowledge():
+            if e.get("id") == entry_id:
+                return {**e, "body": self._entry_body(e)}
+        return {"error": "not found"}
+
+    def add_knowledge(self, title: str, body: str = "", path: str = "") -> dict:
+        import uuid
+
+        entry = {
+            "id": uuid.uuid4().hex[:10],
+            "title": str(title or "Untitled").strip(),
+            "body": "" if path else str(body or ""),
+            "path": str(path or ""),
+            "enabled": True,
+        }
+        entries = self._load_knowledge()
+        entries.append(entry)
+        try:
+            self._save_knowledge(entries)
+        except OSError as exc:
+            return {"error": str(exc)}
+        return {"ok": True, "entry": entry}
+
+    def update_knowledge(
+        self,
+        entry_id: str,
+        title: str | None = None,
+        body: str | None = None,
+        enabled: bool | None = None,
+    ) -> dict:
+        entries = self._load_knowledge()
+        for e in entries:
+            if e.get("id") == entry_id:
+                if title is not None:
+                    e["title"] = str(title).strip()
+                if body is not None and not e.get("path"):
+                    e["body"] = str(body)
+                if enabled is not None:
+                    e["enabled"] = bool(enabled)
+                try:
+                    self._save_knowledge(entries)
+                except OSError as exc:
+                    return {"error": str(exc)}
+                return {"ok": True, "entry": e}
+        return {"error": "not found"}
+
+    def delete_knowledge(self, entry_id: str) -> dict:
+        entries = [e for e in self._load_knowledge() if e.get("id") != entry_id]
+        try:
+            self._save_knowledge(entries)
+        except OSError as exc:
+            return {"error": str(exc)}
+        return {"ok": True}
+
+    def import_knowledge(self, link: bool = False) -> dict:
+        """Pick a file and add it as a knowledge entry.
+
+        ``link=True`` keeps it as a live file reference (re-read each turn);
+        otherwise the file's text is copied inline at import time.
+        """
+        files = self.pick_files()
+        if not files:
+            return {}
+        p = Path(files[0])
+        if link:
+            return self.add_knowledge(p.stem, path=str(p))
+        try:
+            text = p.read_text(errors="replace")
+        except OSError as exc:
+            return {"error": str(exc)}
+        return self.add_knowledge(p.stem, body=text)
+
+    def export_knowledge(self, entry_id: str) -> dict:
+        """Write an entry to a markdown file under the knowledge dir and reveal it."""
+        entry = self.get_knowledge(entry_id)
+        if entry.get("error"):
+            return entry
+        try:
+            d = self._app_dir() / "knowledge_export"
+            d.mkdir(parents=True, exist_ok=True)
+            out = d / f"{self._safe_id(entry.get('title') or entry_id)}.md"
+            out.write_text(f"# {entry.get('title')}\n\n{self._entry_body(entry)}")
+            self._open_native(str(d))
+            return {"ok": True, "path": str(out)}
+        except OSError as exc:
+            return {"error": str(exc)}
 
     # --- platform-coupled panels: graceful, shape-correct degradation ----
 
