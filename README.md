@@ -1,6 +1,6 @@
 # Pennyworth
 
-[![CI](https://github.com/greeninvoice/pennyworth/actions/workflows/ci.yml/badge.svg)](https://github.com/greeninvoice/pennyworth/actions/workflows/ci.yml)
+[![CI](https://github.com/elbazon/pennyworth/actions/workflows/ci.yml/badge.svg)](https://github.com/elbazon/pennyworth/actions/workflows/ci.yml)
 
 > A dignified butler-engineer AI companion for your platform. You talk to **Alfred**; the project is **Pennyworth**.
 
