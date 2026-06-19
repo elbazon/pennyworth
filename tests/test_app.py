@@ -447,6 +447,26 @@ def test_portrait_asset_ships():
     assert window.portrait_path().is_file()
 
 
+def test_inline_script_parses(tmp_path):
+    """The page's inline JS must parse — a syntax error aborts the whole script
+    and leaves the UI rendered but inert. Skips cleanly where node is absent."""
+    import shutil
+    import subprocess
+
+    node = shutil.which("node")
+    if not node:
+        import pytest
+
+        pytest.skip("node not available to syntax-check the inline script")
+    html = window.index_path().read_text().splitlines()
+    start = next(i for i, ln in enumerate(html) if ln.strip() == "<script>" and i > 50)
+    end = next(i for i in range(start + 1, len(html)) if "</script>" in html[i])
+    script = tmp_path / "inline.js"
+    script.write_text("\n".join(html[start + 1 : end]))
+    result = subprocess.run([node, "--check", str(script)], capture_output=True, text=True)
+    assert result.returncode == 0, f"inline script has a syntax error:\n{result.stderr}"
+
+
 def test_ui_proprietary_font_and_brand_chrome_removed():
     """De-branding that IS done: no Ploni font, no Morning logo/link/footer."""
     html = window.index_path().read_text().lower()

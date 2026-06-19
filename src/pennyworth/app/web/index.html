@@ -1382,9 +1382,10 @@
   chatScroll.addEventListener("scroll", scheduleScrollBtn);
   new MutationObserver(scheduleScrollBtn).observe(chatScroll,
     { childList: true, subtree: true, characterData: true });
-  scrollBtn.addEventListener("click", () =>
+  scrollBtn.addEventListener("click", () => {
     const sc = scrollContainer();
-    sc.scrollTo({ top: sc.scrollHeight, behavior: "smooth" }));
+    sc.scrollTo({ top: sc.scrollHeight, behavior: "smooth" });
+  });
 
   // Code-block buttons (copy / collapse). Delegated on #chat because each Alfred
   // bubble rebuilds its innerHTML on every animation frame while streaming — any
