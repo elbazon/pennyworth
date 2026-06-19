@@ -152,4 +152,9 @@ redistribute, including commercially, provided you keep the copyright notice and
 [`NOTICE`](NOTICE) attribution. The names "Pennyworth" and "Alfred" and the branding
 are reserved — see **[TRADEMARK.md](TRADEMARK.md)**.
 
+Alfred is written in admiration of the classic gentleman's-butler tradition.
+"Batman", "Alfred Pennyworth", and "Batcave" are trademarks of DC Comics /
+Warner Bros., referenced here purely as an affectionate homage — this project is
+independent and not affiliated with or endorsed by them. See **[TRADEMARK.md](TRADEMARK.md)**.
+
 Copyright © 2026 Haim Elbaz.

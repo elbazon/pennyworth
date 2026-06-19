@@ -23,3 +23,12 @@ clearly attributable to its author.
 
 These are common-law (unregistered) marks; no registration is claimed. Questions
 about naming or endorsement: contact the author.
+
+## Homage & third-party marks
+
+Alfred's character is written in admiration of the classic gentleman's-butler
+tradition. "Batman", "Alfred Pennyworth", and "Batcave" are trademarks of
+DC Comics / Warner Bros. Entertainment Inc. They are referenced here only as
+an affectionate homage; this project is independent and is **not** affiliated
+with, sponsored by, or endorsed by DC Comics or Warner Bros. All rights in
+those names and characters remain with their owners.
