@@ -203,6 +203,11 @@ class Bridge:
 
         threading.Thread(target=_drain, daemon=True, name="alfred-emit").start()
 
+    def diag_js(self, msg: str) -> bool:
+        """Receive a JS-side error/log line and record it (bring-up diagnostics)."""
+        _diag(str(msg))
+        return True
+
     def _emit(self, event: dict) -> None:
         """Push one event object into the page (no-op without a window)."""
         if self._window is None:

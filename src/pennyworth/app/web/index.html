@@ -1327,7 +1327,23 @@
   // Error visibility FIRST: a top-level crash with no handler killed the
   // whole script silently once (a null addEventListener) — never again.
   window.__err = null;
-  window.onerror = (msg, src, line) => { window.__err = msg + " @" + line; };
+  window.__errBuf = [];
+  function __flushErrs() {
+    try {
+      const api = window.pywebview && window.pywebview.api;
+      if (api && api.diag_js) {
+        while (window.__errBuf.length) api.diag_js(window.__errBuf.shift());
+      }
+    } catch (e) {}
+  }
+  window.onerror = (msg, src, line, col, err) => {
+    window.__err = msg + " @" + line + ":" + col;
+    window.__errBuf.push("JSERR: " + msg + " @" + (src || "") + ":" + line + ":" + col +
+      (err && err.stack ? "\n  " + String(err.stack).split("\n").slice(0, 4).join("\n  ") : ""));
+    __flushErrs();
+  };
+  window.addEventListener("error", (e) => { if (e && e.message) window.onerror(e.message, e.filename, e.lineno, e.colno, e.error); });
+  setInterval(__flushErrs, 800);
 
   const $ = (id) => document.getElementById(id);
   const chatScroll = $("chat"), input = $("input"), sendBtn = $("sendBtn");
