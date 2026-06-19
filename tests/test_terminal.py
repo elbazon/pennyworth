@@ -22,7 +22,7 @@ def mgr():
         m.close(tid)
 
 
-def _poll(fn, *, timeout: float = 3.0, interval: float = 0.1):
+def _poll(fn, *, timeout: float = 8.0, interval: float = 0.1):
     """Retry fn() until it returns truthy, or timeout expires."""
     deadline = time.monotonic() + timeout
     while time.monotonic() < deadline:

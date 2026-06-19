@@ -42,17 +42,22 @@ class TermManager:
         with self._lock:
             if term_id in self._sessions:
                 return {"ok": True, "id": term_id, "reused": True}
-        shell = os.environ.get("SHELL", "/bin/zsh")
+        shell = _pick_shell()
         try:
             pid, master_fd = pty.fork()
         except OSError as exc:
             return {"ok": False, "error": str(exc)}
         if pid == 0:
-            # Child process — exec the shell; this path never returns.
+            # Child process — exec the shell; this path never returns. Fall back
+            # to /bin/sh if the chosen shell can't exec, so a missing $SHELL (or
+            # a zsh-less CI box) still gets a working terminal instead of silence.
             try:
                 os.execvp(shell, [shell, "-i"])
             except OSError:
-                os._exit(1)
+                try:
+                    os.execvp("/bin/sh", ["/bin/sh", "-i"])
+                except OSError:
+                    os._exit(1)
         # Parent: set the initial window size, then register the session.
         try:
             _set_winsize(master_fd, cols, rows)
@@ -171,6 +176,20 @@ class TermManager:
 # ------------------------------------------------------------------
 # Helpers
 # ------------------------------------------------------------------
+
+
+def _pick_shell() -> str:
+    """The user's ``$SHELL`` if it exists, else the first available common shell.
+
+    A bare ``$SHELL`` default of ``/bin/zsh`` is wrong on boxes without zsh (many
+    CI runners), where the PTY child would fail to exec and produce no output.
+    """
+    shell = os.environ.get("SHELL", "")
+    candidates = [shell, "/bin/zsh", "/bin/bash", "/bin/sh"]
+    for cand in candidates:
+        if cand and os.path.exists(cand) and os.access(cand, os.X_OK):
+            return cand
+    return "/bin/sh"
 
 
 def _set_winsize(fd: int, cols: int, rows: int) -> None:
