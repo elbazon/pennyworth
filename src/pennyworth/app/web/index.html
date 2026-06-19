@@ -1632,10 +1632,10 @@
     const ultron = document.body.classList.contains("ultron");
     w.append(img,
       el("h1", "", ultron ? "Speak. I am listening." : "Good day. How may I be of service?"),
-      el("p", "", "Ask in plain language — deploy a service, investigate a failure, set up your environment."));
+      el("p", "", "Ask in plain language — explain code, investigate a bug, review a change, or learn your codebase."));
     const chips = el("div", "chips");
-    for (const t of ["Set up my local environment", "What's the status of my environment?",
-                     "Create a test user for me", "What changed today?", "Review my changes"]) {
+    for (const t of ["Explain this codebase", "Review my changes",
+                     "What changed today?", "Find and fix a bug", "Write a test"]) {
       const c = el("button", "chip", t);
       c.addEventListener("click", () => send(t));
       chips.append(c);
