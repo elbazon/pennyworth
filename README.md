@@ -15,6 +15,15 @@ box, Pennyworth is the full Alfred character serving a generic, unconfigured
 platform. Attach a pack and he becomes fluent in *your* codebase, your team, and
 your tooling — and `detach` returns him to clean.
 
+## Documentation
+
+- **[Getting started](docs/getting-started.md)** — install, prerequisites, first run.
+- **[Desktop app tour](docs/desktop-app.md)** — every panel, terminal, models, themes.
+- **[Teach Alfred your domain](docs/knowledge.md)** — the Knowledge panel.
+- **[Build a pack](#build-a-pack)** — make Alfred fluent in your whole platform.
+- **[Architecture](docs/architecture.md)** — how the brain is assembled, and the one rule.
+- **[Contributing](CONTRIBUTING.md)** · **[Screenshot checklist](docs/screenshots.md)**
+
 ## The one rule
 
 **The brain is clean by construction.** With no pack attached, the assembled
