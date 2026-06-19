@@ -14,11 +14,47 @@ into the page via ``window.evaluate_js("window.alfredEvent(...)")`` once
 
 from __future__ import annotations
 
+import shutil
 import sys
+import time
 from pathlib import Path
 
 WINDOW_TITLE = "Alfred"
 BACKGROUND = "#262624"
+
+
+def _launch_log(msg: str) -> None:
+    """Best-effort launch trace into ~/.pennyworth/app/diag.log."""
+    try:
+        from pennyworth import packs as _packs
+
+        path = _packs.home() / "app" / "diag.log"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with path.open("a") as fh:
+            fh.write(f"{time.time():.3f} window.main: {msg}\n")
+    except Exception:
+        pass
+
+
+def _purge_webkit_cache() -> None:
+    """Delete WKWebView's on-disk cache before WebKit initializes (macOS).
+
+    WKWebView serves a STALE ``file://`` index.html even across query strings,
+    so an upgrade can keep showing the previous UI. Removing the cache dirs
+    (which belong to the python bundle id and hold nothing else) while WebKit
+    is still asleep forces a fresh load. Best-effort; a no-op off macOS.
+    """
+    home = Path.home()
+    for cache_dir in (
+        home / "Library" / "Caches" / "org.python.python" / "WebKit",
+        home / "Library" / "Caches" / "com.apple.python" / "WebKit",
+        home / "Library" / "WebKit" / "org.python.python",
+    ):
+        try:
+            if cache_dir.exists():
+                shutil.rmtree(cache_dir, ignore_errors=True)
+        except OSError:
+            pass
 
 
 def _web_dir() -> Path:
@@ -69,6 +105,8 @@ def window_config() -> dict:
 
 def main() -> int:
     """Open the desktop window. Blocks until the window is closed."""
+    _launch_log(f"start (index mtime={int(index_path().stat().st_mtime)})")
+    _purge_webkit_cache()
     try:
         import webview
     except ImportError:
