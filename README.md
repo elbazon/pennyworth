@@ -114,14 +114,26 @@ shape.
 
 See [`docs/architecture.md`](docs/architecture.md) for the design.
 
+## Knowledge — teach Alfred your domain
+
+The desktop app has a **Knowledge** panel: free-form notes about your platform —
+glossary, conventions, architecture, do's and don'ts — injected into Alfred's
+prompt at the start of every turn, with no code change and no pack. Add them
+inline, **import** a file, or **link** a file (re-read live each turn, so editing
+it updates Alfred immediately); enable/disable, edit, and export each entry.
+Stored locally under `PENNYWORTH_HOME/app/knowledge.json`.
+
 ## Status
 
-v0.1.0 — runnable. The persona, the per-user profile, the agent runner, and a
-desktop app (with streaming) all work end to end, and the first-cut pack contract
-is complete: every seam — principal, attribution/identity, skills, team,
-repositories, hands (MCP, with live wiring into the host agent), and CI — is built
-and guarded by the clean-brain test. CI runs ruff + the test suite on every push
-and pull request across Python 3.11–3.13. Next: packaging for PyPI.
+v0.1.0 — runnable. The persona, the per-user profile, the agent runner, and the
+full desktop app all work end to end: streaming chat with visible extended
+thinking, an embedded terminal, per-chat model/persona/effort, configured
+repositories handed to the agent as working directories, a repo-focused Batcave,
+Claude usage, custom themes, scheduled prompts, and the Knowledge panel. The
+first-cut pack contract is complete: every seam — principal, attribution/identity,
+skills, team, repositories, hands (MCP, with live wiring into the host agent), and
+CI — is built and guarded by the clean-brain test. CI runs ruff + the test suite
+on every push and pull request across Python 3.11–3.13. Next: packaging for PyPI.
 
 ## License
 

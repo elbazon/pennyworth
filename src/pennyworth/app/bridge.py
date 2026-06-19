@@ -95,10 +95,11 @@ _SETTING_DEFAULTS = {
 
 
 def _diag(msg: str) -> None:
-    """Append a diagnostic line to ~/.pennyworth/app/diag.log (best-effort).
+    """Append an error line to ~/.pennyworth/app/diag.log (best-effort).
 
-    Temporary instrumentation for the GUI bring-up: the desktop console is not
-    visible from here, so the push path logs to a file we can read back.
+    A quiet error channel for the desktop app, whose JS console and worker-thread
+    exceptions are otherwise invisible — only failures are logged, so a user can
+    share the file when reporting a bug.
     """
     try:
         path = _packs.home() / "app" / "diag.log"
@@ -169,7 +170,6 @@ class Bridge:
         """Wire the live pywebview window so the bridge can push events."""
         self._window = window
         self._start_emitter()
-        _diag(f"attach_window: window={window!r}")
 
     def _start_emitter(self) -> None:
         """Start the single thread that owns every ``evaluate_js`` push.
@@ -192,14 +192,11 @@ class Bridge:
                 event = self._emit_q.get()
                 window = self._window
                 if window is None:
-                    _diag("drain: no window, dropped event")
                     continue
                 try:
                     window.evaluate_js(f"window.alfredEvent({json.dumps(event)})")
-                    _diag(f"drain: delivered type={event.get('type')} "
-                          f"kind={event.get('kind')}")
                 except Exception as exc:
-                    _diag(f"drain: evaluate_js FAILED: {exc!r}")
+                    _diag(f"emit failed: {exc!r}")
 
         threading.Thread(target=_drain, daemon=True, name="alfred-emit").start()
 
@@ -383,8 +380,6 @@ class Bridge:
     def send_message(self, chat_id: str, text: str) -> bool:
         """Start a turn for ``text`` in ``chat_id``; stream events via _emit."""
         text = (text or "").strip()
-        _diag(f"send_message: chat={chat_id!r} len={len(text)} "
-              f"window={'yes' if self._window else 'NO'}")
         if not text or not chat_id:
             return False
         chat = self._chat(chat_id)
@@ -406,7 +401,6 @@ class Bridge:
         def emit(event: dict) -> None:
             self._emit({"chatId": chat_id, **event})
 
-        _diag(f"_run_turn: start chat={chat_id!r} model={chat['model']}")
         chat["messages"].append({"role": "user", "text": request_text})
         request = _compose(chat["messages"])
         model_id = _MODEL_TO_ID.get(chat["model"], None)
@@ -481,9 +475,8 @@ class Bridge:
                 extra_knowledge=knowledge,
             )
             ok = code == 0
-            _diag(f"_run_turn: runner exit={code} replyLen={len(''.join(reply))}")
         except Exception as exc:  # never let a worker thread die silently
-            _diag(f"_run_turn: EXCEPTION {exc!r}")
+            _diag(f"turn error: {exc!r}")
             emit({"type": "error", "text": f"Error: {exc}"})
 
         full = "".join(reply).strip()

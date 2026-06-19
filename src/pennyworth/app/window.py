@@ -16,24 +16,10 @@ from __future__ import annotations
 
 import shutil
 import sys
-import time
 from pathlib import Path
 
 WINDOW_TITLE = "Alfred"
 BACKGROUND = "#262624"
-
-
-def _launch_log(msg: str) -> None:
-    """Best-effort launch trace into ~/.pennyworth/app/diag.log."""
-    try:
-        from pennyworth import packs as _packs
-
-        path = _packs.home() / "app" / "diag.log"
-        path.parent.mkdir(parents=True, exist_ok=True)
-        with path.open("a") as fh:
-            fh.write(f"{time.time():.3f} window.main: {msg}\n")
-    except Exception:
-        pass
 
 
 def _purge_webkit_cache() -> None:
@@ -160,7 +146,6 @@ def _adopt_identity_post_launch() -> None:
 
 def main() -> int:
     """Open the desktop window. Blocks until the window is closed."""
-    _launch_log(f"start (index mtime={int(index_path().stat().st_mtime)})")
     _purge_webkit_cache()
     _adopt_identity_pre_launch()
     try:
