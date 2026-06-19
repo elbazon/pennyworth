@@ -22,8 +22,8 @@ If `claude` isn't installed, install the Claude Code CLI first (or point
 ## 2. Install
 
 ```bash
-pipx install pennyworth            # the CLI
-pipx install 'pennyworth[app]'     # CLI + the desktop app (pywebview)
+pipx install 'pennyworth[app]'     # Alfred, with the desktop app (recommended)
+pipx install pennyworth            # command line only, no desktop app
 ```
 
 From a clone, for development:
