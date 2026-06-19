@@ -645,6 +645,19 @@ class Bridge:
 
     # --- native dialogs --------------------------------------------------
 
+    @staticmethod
+    def _dialog_kind(webview, which: str):
+        """Resolve a dialog type, preferring the new ``FileDialog`` enum.
+
+        pywebview deprecated the module-level ``FOLDER_DIALOG`` / ``OPEN_DIALOG``
+        constants in favour of ``webview.FileDialog.FOLDER`` / ``.OPEN``; prefer
+        the enum where present, fall back to the constants on older versions.
+        """
+        fd = getattr(webview, "FileDialog", None)
+        if fd is not None and hasattr(fd, which):
+            return getattr(fd, which)
+        return getattr(webview, "FOLDER_DIALOG" if which == "FOLDER" else "OPEN_DIALOG")
+
     def _folder_dialog(self) -> str:
         try:
             import webview
@@ -654,7 +667,9 @@ class Bridge:
             return ""
         if not wins:
             return ""
-        result = wins[0].create_file_dialog(dialog_type=webview.FOLDER_DIALOG)
+        result = wins[0].create_file_dialog(
+            dialog_type=self._dialog_kind(webview, "FOLDER")
+        )
         return str(result[0]) if result else ""
 
     def pick_files(self) -> list[str]:
@@ -667,7 +682,7 @@ class Bridge:
         if not wins:
             return []
         result = wins[0].create_file_dialog(
-            dialog_type=webview.OPEN_DIALOG, allow_multiple=True
+            dialog_type=self._dialog_kind(webview, "OPEN"), allow_multiple=True
         )
         return [str(p) for p in result] if result else []
 
