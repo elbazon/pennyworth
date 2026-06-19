@@ -83,6 +83,30 @@ def test_set_setting_rejects_unknown_key():
     assert "error" in _bridge().set_setting("not_a_setting", 1)
 
 
+def test_provider_settings_and_secret_key(tmp_path, monkeypatch):
+    monkeypatch.setenv("PENNYWORTH_HOME", str(tmp_path))
+    bridge = _bridge()
+    s = bridge.get_settings()
+    assert s["provider"] == "claude-code"  # default backend
+    assert "claude-code" in s["providers"] and "openai" in s["providers"]
+    assert s["provider_key_set"] is False
+
+    bridge.set_setting("provider", "openai")
+    assert bridge.get_settings()["provider"] == "openai"
+
+    # the API key is stored in a separate 0600 file and never returned to the UI
+    assert bridge.set_provider_key("sk-secret")["provider_key_set"] is True
+    after = bridge.get_settings()
+    assert after["provider_key_set"] is True
+    assert "sk-secret" not in json.dumps(after)
+    secrets = tmp_path / "app" / "secrets.json"
+    assert oct(secrets.stat().st_mode)[-3:] == "600"
+
+    # clearing the key removes it
+    bridge.set_provider_key("")
+    assert bridge.get_settings()["provider_key_set"] is False
+
+
 def test_set_setting_name_updates_profile(tmp_path, monkeypatch):
     monkeypatch.setenv("PENNYWORTH_HOME", str(tmp_path))
     from pennyworth import profile as _profile

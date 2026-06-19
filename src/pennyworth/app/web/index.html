@@ -1254,6 +1254,15 @@
         <div class="sub" id="settingsSub">Your Alfred profile.</div>
         <div class="card" id="settingsCard"></div>
 
+        <h2 style="margin-top:28px">AI provider</h2>
+        <div class="sub">Which model answers. <b>Claude Code</b> (default) keeps
+          Alfred's full powers — editing files, running tools, the terminal.
+          <b>OpenAI</b> or any <b>OpenAI-compatible</b> endpoint (OpenAI, Ollama,
+          vLLM, LM Studio) gives a conversational Alfred: he streams replies but
+          won't edit files or run tools. Your API key is stored locally and never
+          shown again.</div>
+        <div class="card" id="providerCard"></div>
+
         <h2 style="margin-top:28px">Repositories</h2>
         <div class="sub">Where your local repositories live. Alfred reads and
           writes code in them, and they show up in the Batcave. Each is handed
@@ -4601,8 +4610,63 @@
     _renderThemeSettings = renderTheme;   // let the editor refresh this picker
     renderTheme();
 
+    renderProvider(s);
     loadVersions();
     loadDirPaths();
+  }
+
+  // ---- AI provider ----
+  function renderProvider(s) {
+    const card = $("providerCard");
+    if (!card) return;
+    card.innerHTML = "";
+    const PROVIDER_LABELS = {
+      "claude-code": "Claude Code (full powers)",
+      "openai": "OpenAI",
+      "openai-compatible": "OpenAI-compatible (local / custom)",
+    };
+    const provider = s.provider || "claude-code";
+
+    // Provider picker.
+    const prow = el("div", "row");
+    prow.append(el("label", "", "Provider"));
+    const psel = el("select");
+    for (const p of (s.providers || ["claude-code"]))
+      psel.append(new Option(PROVIDER_LABELS[p] || p, p));
+    psel.value = provider;
+    psel.addEventListener("change", async () => {
+      await api().set_setting("provider", psel.value);
+      renderProvider(await api().get_settings());   // re-render: show/hide fields
+    });
+    prow.append(psel);
+    card.append(prow);
+
+    // The HTTP-backend fields only matter for non-Claude providers.
+    if (provider !== "claude-code") {
+      const field = (key, label, type, value, placeholder, onSave) => {
+        const row = el("div", "row");
+        row.append(el("label", "", label));
+        const inp = el("input");
+        inp.type = type;
+        if (value) inp.value = value;
+        if (placeholder) inp.placeholder = placeholder;
+        inp.addEventListener("change", async () => { await onSave(inp.value); });
+        row.append(inp);
+        card.append(row);
+      };
+      field("provider_base_url", "Base URL", "text", s.provider_base_url,
+        s.provider_base_url_placeholder || "https://api.openai.com/v1",
+        (v) => api().set_setting("provider_base_url", v));
+      field("provider_model", "Model", "text", s.provider_model,
+        provider === "openai" ? "e.g. gpt-4o-mini" : "e.g. llama3.1",
+        (v) => api().set_setting("provider_model", v));
+      field("provider_api_key", "API key", "password", "",
+        s.provider_key_set ? "•••••••• (set — leave blank to keep)" : "paste your key",
+        async (v) => { if (v) await api().set_provider_key(v); });
+      card.append(el("div", "sub",
+        "Conversational mode: Alfred streams replies but won't edit files or run " +
+        "tools. Switch back to Claude Code for full agentic powers."));
+    }
   }
 
   // ---- repository paths ----

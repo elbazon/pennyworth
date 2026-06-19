@@ -26,7 +26,6 @@ from pathlib import Path
 
 from pennyworth import packs as _packs
 from pennyworth import profile as _profile
-from pennyworth import runner as _runner
 from pennyworth.app.terminal import TermManager
 from pennyworth.pack import Pack
 from pennyworth.profile import Profile
@@ -91,6 +90,13 @@ _SETTING_DEFAULTS = {
     "ui_scale": 1.0,
     "ui_font": "system",
     "ui_theme": "",
+    # AI provider: which backend answers. "claude-code" (default) keeps full
+    # agentic powers; "openai" / "openai-compatible" route to an OpenAI-style
+    # endpoint (OpenAI, Ollama, vLLM, LM Studio…). The API key is NOT here — it
+    # lives in a separate 0600 secrets file and is never returned to the UI.
+    "provider": "claude-code",
+    "provider_base_url": "",
+    "provider_model": "",
 }
 
 
@@ -270,7 +276,51 @@ class Bridge:
         return data
 
     def _settings_payload(self) -> dict:
-        return self._load_settings()
+        from pennyworth import providers as _providers
+
+        s = self._load_settings()
+        # Provider metadata the Settings UI needs, plus whether a key is stored
+        # (never the key itself).
+        s["providers"] = list(_providers.PROVIDERS)
+        s["provider_key_set"] = bool(self._read_provider_key())
+        if not s.get("provider_base_url"):
+            s["provider_base_url_placeholder"] = _providers.default_base_url(
+                s.get("provider", "")
+            )
+        return s
+
+    # --- provider secret (api key) — separate 0600 file, never sent to the UI ---
+
+    def _secrets_path(self) -> Path:
+        return self._app_dir() / "secrets.json"
+
+    def _read_provider_key(self) -> str:
+        try:
+            data = json.loads(self._secrets_path().read_text())
+            return str(data.get("provider_api_key") or "")
+        except (OSError, ValueError):
+            return ""
+
+    def set_provider_key(self, key: str) -> dict:
+        """Store (or clear, if empty) the provider API key in a 0600 file."""
+        try:
+            self._app_dir().mkdir(parents=True, exist_ok=True)
+            path = self._secrets_path()
+            data = {}
+            if path.is_file():
+                try:
+                    data = json.loads(path.read_text())
+                except ValueError:
+                    data = {}
+            if key:
+                data["provider_api_key"] = key
+            else:
+                data.pop("provider_api_key", None)
+            path.write_text(json.dumps(data))
+            os.chmod(path, 0o600)
+        except OSError as exc:
+            return {"error": str(exc)}
+        return {"ok": True, "provider_key_set": bool(key)}
 
     # --- boot: state, settings -------------------------------------------
 
@@ -406,7 +456,8 @@ class Bridge:
             for r in self._load_extras()
             if r.get("exists") and r["path"] != chat.get("cwd")
         ]
-        want_thinking = bool(self._load_settings().get("show_thinking"))
+        settings = self._load_settings()
+        want_thinking = bool(settings.get("show_thinking"))
         knowledge = self._knowledge_text()
         reply: list[str] = []
         turn_model = {"id": chat["model"]}
@@ -456,10 +507,16 @@ class Bridge:
 
         ok = False
         try:
-            code = _runner.stream_events(
+            from pennyworth import providers as _providers
+
+            code = _providers.stream_events(
                 request,
                 self._pack_provider(),
                 on_event=on_event,
+                provider=settings.get("provider", "claude-code"),
+                base_url=settings.get("provider_base_url", ""),
+                api_key=self._read_provider_key(),
+                provider_model=settings.get("provider_model", ""),
                 model=model_id,
                 cwd=chat.get("cwd"),
                 add_dirs=add_dirs,

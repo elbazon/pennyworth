@@ -101,6 +101,11 @@ Prompts Alfred runs at a chosen time while the app is open — a quick way to qu
 
 - **Profile** — your name and how Alfred addresses you (sir/madam).
 - **Defaults** — model, persona, effort, *show thinking*, notifications.
+- **AI provider** — which model answers. **Claude Code** (default) keeps Alfred's
+  full powers — editing files, running tools, the terminal. **OpenAI** or any
+  **OpenAI-compatible** endpoint (OpenAI, Ollama, vLLM, LM Studio) gives a
+  conversational Alfred: he streams replies but won't edit files or run tools.
+  Your API key is stored locally and never shown again.
 - **Appearance** — UI font (system/serif/mono), scale, and theme.
 - **Repositories** — the repos Alfred works in and that appear in the Batcave.
 
