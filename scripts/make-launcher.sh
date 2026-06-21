@@ -6,7 +6,7 @@ set -euo pipefail
 REPO_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 APP_NAME="Pennyworth"
 APP_PATH="$HOME/Applications/${APP_NAME}.app"
-ICON_SRC="$REPO_DIR/src/pennyworth/app/web/alfred.png"
+ICON_SRC="$REPO_DIR/src/pennyworth/app/web/logo.png"
 
 echo "Building ${APP_NAME}.app..."
 
