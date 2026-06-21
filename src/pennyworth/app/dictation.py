@@ -1,4 +1,4 @@
-"""Voice-to-text for Alfred.app — record, then transcribe.
+"""Voice-to-text for Pennyworth.app — record, then transcribe.
 
 Two earlier designs streamed live partials through an AVAudioEngine tap;
 both crashed the app in live use. The tap block runs on a REALTIME audio

@@ -18,7 +18,7 @@ import shutil
 import sys
 from pathlib import Path
 
-WINDOW_TITLE = "Alfred"
+WINDOW_TITLE = "Pennyworth"
 BACKGROUND = "#262624"
 
 
@@ -90,12 +90,14 @@ def window_config() -> dict:
 
 
 def _adopt_identity_pre_launch() -> None:
-    """Rename the process from "Python" to "Alfred" in the menu bar (macOS).
+    """Rename the process from "Python" to "Pennyworth" in the menu bar (macOS).
 
     A bare python process inherits the interpreter's bundle identity, so the
     app menu and Cmd-Tab say "Python". Rewriting CFBundleName in the live
     bundle info dictionary before NSApplication finishes launching fixes it.
-    Best-effort; a no-op without PyObjC or off macOS.
+    The identifier matches the installed bundle (see ``bundle.py``) so the
+    running process and the ``.app`` share one identity. Best-effort; a no-op
+    without PyObjC or off macOS.
     """
     try:
         from Foundation import NSBundle
@@ -103,15 +105,15 @@ def _adopt_identity_pre_launch() -> None:
         bundle = NSBundle.mainBundle()
         info = bundle.localizedInfoDictionary() or bundle.infoDictionary()
         if info is not None:
-            info["CFBundleName"] = "Alfred"
-            info["CFBundleDisplayName"] = "Alfred"
-            info["CFBundleIdentifier"] = "io.pennyworth.alfred"
+            info["CFBundleName"] = "Pennyworth"
+            info["CFBundleDisplayName"] = "Pennyworth"
+            info["CFBundleIdentifier"] = "io.pennyworth.app"
     except Exception:
         pass
 
 
 def _adopt_identity_post_launch() -> None:
-    """Set the Dock icon to Alfred's portrait and make Alfred a foreground app.
+    """Set the Dock icon to Alfred's portrait and make Pennyworth a foreground app.
 
     pywebview runs this ``webview.start(func=...)`` callback on a worker thread;
     AppKit calls must be marshalled to the main thread. ``setActivationPolicy_(0)``
@@ -132,7 +134,7 @@ def _adopt_identity_post_launch() -> None:
             icon = NSImage.alloc().initWithContentsOfFile_(str(portrait_path()))
             if icon:
                 app.setApplicationIconImage_(icon)
-            NSProcessInfo.processInfo().setProcessName_("Alfred")
+            NSProcessInfo.processInfo().setProcessName_("Pennyworth")
             app.setActivationPolicy_(0)  # Regular: a real foreground app
             app.activateIgnoringOtherApps_(True)
             wins = app.windows()
