@@ -1,7 +1,7 @@
-"""The Pennyworth command line — ``alfred``.
+"""The Pennyworth command line — ``pennyworth``.
 
 Manage knowledge packs, render the assembled brain, and run a host coding agent
-as Alfred. A bare ``alfred "<request>"`` is shorthand for ``alfred run``.
+as Alfred. A bare ``pennyworth "<request>"`` is shorthand for ``pennyworth run``.
 """
 
 from __future__ import annotations
@@ -107,13 +107,13 @@ def _cmd_profile_clear(_args: argparse.Namespace) -> int:
 
 
 def _cmd_app(args: argparse.Namespace) -> int:
-    if getattr(args, "install", False):
+    if getattr(args, "install", False) or getattr(args, "install_shortcut", False):
         from pennyworth.app.bundle import install_app_bundle
 
         try:
             path = install_app_bundle()
             print(f"Installed: {path}")
-            print("Drag Alfred.app to your Dock, or double-click to launch.")
+            print("Drag Pennyworth.app to your Dock, or double-click to launch.")
         except Exception as exc:
             print(f"error: {exc}", file=sys.stderr)
             return 1
@@ -123,7 +123,7 @@ def _cmd_app(args: argparse.Namespace) -> int:
         from pennyworth.app.bundle import remove_app_bundle
 
         removed = remove_app_bundle()
-        print("Removed Alfred.app." if removed else "Alfred.app not found.")
+        print("Removed Pennyworth.app." if removed else "Pennyworth.app not found.")
         return 0
 
     from pennyworth.app.window import main as app_main
@@ -159,8 +159,8 @@ def _add_agent_args(parser: argparse.ArgumentParser) -> None:
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        prog="alfred",
-        description="Alfred — a butler-engineer companion (Pennyworth).",
+        prog="pennyworth",
+        description="Pennyworth — a butler-engineer companion.",
     )
     parser.add_argument(
         "--version", action="version", version=f"pennyworth {__version__}"
@@ -217,14 +217,20 @@ def build_parser() -> argparse.ArgumentParser:
         "app", help="launch the desktop app (needs the 'app' extra)"
     )
     app_cmd.add_argument(
+        "--install-shortcut",
+        action="store_true",
+        dest="install_shortcut",
+        help="install Pennyworth.app to ~/Applications (macOS only)",
+    )
+    app_cmd.add_argument(
         "--install",
         action="store_true",
-        help="install Alfred.app to ~/Applications (macOS only)",
+        help=argparse.SUPPRESS,  # kept for backwards compat
     )
     app_cmd.add_argument(
         "--uninstall",
         action="store_true",
-        help="remove Alfred.app from ~/Applications (macOS only)",
+        help="remove Pennyworth.app from ~/Applications (macOS only)",
     )
     app_cmd.set_defaults(func=_cmd_app)
 

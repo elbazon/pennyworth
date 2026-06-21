@@ -1,33 +1,35 @@
-"""macOS .app bundle installer for Alfred (Pennyworth).
+"""macOS .app bundle installer for Pennyworth.
 
-Creates a minimal ``Alfred.app`` in ``~/Applications`` (or a custom path)
-that launches ``alfred app`` when double-clicked.  No py2app or additional
+Creates ``Pennyworth.app`` in ``~/Applications`` (or a custom path) that
+launches ``pennyworth app`` when double-clicked.  No py2app or additional
 tools required — the bundle is hand-assembled from a shell launcher and a
-minimal ``Info.plist``.
+minimal ``Info.plist``, with a proper .icns icon built from ``logo.png``.
 
 The bundle layout::
 
-    Alfred.app/
+    Pennyworth.app/
       Contents/
         Info.plist
         MacOS/
-          alfred          ← shell launcher that exec's 'alfred app'
+          pennyworth      ← shell launcher that exec's 'pennyworth app'
         Resources/
-          logo.png        ← Pennyworth portrait (copied as the app icon)
+          pennyworth.icns ← icon built from logo.png via sips + iconutil
 
 Use ``install_app_bundle()`` from Python, or invoke via the CLI:
-``alfred app --install``.
+``pennyworth app --install-shortcut``.
 """
 
 from __future__ import annotations
 
 import shutil
 import stat
+import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
-BUNDLE_NAME = "Alfred"
-BUNDLE_ID = "io.pennyworth.alfred"
+BUNDLE_NAME = "Pennyworth"
+BUNDLE_ID = "io.pennyworth.app"
 BUNDLE_VERSION = "1"
 
 _PLIST_TEMPLATE = """\
@@ -47,9 +49,9 @@ _PLIST_TEMPLATE = """\
   <key>CFBundleShortVersionString</key>
   <string>{version}</string>
   <key>CFBundleExecutable</key>
-  <string>alfred</string>
+  <string>pennyworth</string>
   <key>CFBundleIconFile</key>
-  <string>alfred</string>
+  <string>pennyworth</string>
   <key>CFBundlePackageType</key>
   <string>APPL</string>
   <key>NSHighResolutionCapable</key>
@@ -62,40 +64,71 @@ _PLIST_TEMPLATE = """\
 
 _LAUNCHER_TEMPLATE = """\
 #!/bin/sh
-# Pennyworth / Alfred .app launcher
-# Finds the 'alfred' binary on PATH (or in common install locations) and
-# hands off to 'alfred app'.  Edit ALFRED_BIN to override.
+# Pennyworth .app launcher
+# Finds the 'pennyworth' binary on PATH (or in common install locations).
+# Set PENNYWORTH_BIN to override.
 
-ALFRED_BIN="${{ALFRED_BIN:-}}"
+PENNYWORTH_BIN="${{PENNYWORTH_BIN:-}}"
 
-if [ -z "$ALFRED_BIN" ]; then
+if [ -z "$PENNYWORTH_BIN" ]; then
   for candidate in \
-      "$HOME/.local/bin/alfred" \
-      "$HOME/.pipx/venvs/pennyworth/bin/alfred" \
-      "/usr/local/bin/alfred" \
-      "/opt/homebrew/bin/alfred"; do
+      "$HOME/.local/bin/pennyworth" \
+      "$HOME/.pipx/venvs/pennyworth/bin/pennyworth" \
+      "/usr/local/bin/pennyworth" \
+      "/opt/homebrew/bin/pennyworth"; do
     if [ -x "$candidate" ]; then
-      ALFRED_BIN="$candidate"
+      PENNYWORTH_BIN="$candidate"
       break
     fi
   done
 fi
 
-if [ -z "$ALFRED_BIN" ]; then
-  ALFRED_BIN="$(command -v alfred 2>/dev/null)"
+if [ -z "$PENNYWORTH_BIN" ]; then
+  PENNYWORTH_BIN="$(command -v pennyworth 2>/dev/null)"
 fi
 
-if [ -z "$ALFRED_BIN" ]; then
-  osascript -e 'display dialog "Alfred not found. Install Pennyworth first:\\n\\n  pip install pennyworth[app]" buttons {"OK"} default button 1 with title "Alfred"'
+if [ -z "$PENNYWORTH_BIN" ]; then
+  osascript -e 'display dialog "Pennyworth not found. Install it first:\\n\\n  pipx install \\"pennyworth[app]\\"" buttons {"OK"} default button 1 with title "Pennyworth"'
   exit 1
 fi
 
-exec "$ALFRED_BIN" app
+exec "$PENNYWORTH_BIN" app
 """
 
 
+def _build_icns(png: Path, dest: Path) -> bool:
+    """Convert ``png`` to an ``.icns`` file at ``dest`` using sips + iconutil.
+
+    Returns True on success, False if the tools are unavailable (non-fatal —
+    macOS will fall back to the PNG).
+    """
+    try:
+        with tempfile.TemporaryDirectory() as tmp:
+            iconset = Path(tmp) / "Pennyworth.iconset"
+            iconset.mkdir()
+            for size in (16, 32, 128, 256, 512):
+                subprocess.run(
+                    ["sips", "-z", str(size), str(size), str(png),
+                     "--out", str(iconset / f"icon_{size}x{size}.png")],
+                    check=True, capture_output=True,
+                )
+            for label, px in ((16, 32), (32, 64), (128, 256), (256, 512)):
+                subprocess.run(
+                    ["sips", "-z", str(px), str(px), str(png),
+                     "--out", str(iconset / f"icon_{label}x{label}@2x.png")],
+                    check=True, capture_output=True,
+                )
+            subprocess.run(
+                ["iconutil", "-c", "icns", str(iconset), "-o", str(dest)],
+                check=True, capture_output=True,
+            )
+        return True
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        return False
+
+
 def install_app_bundle(dest_dir: Path | None = None) -> Path:
-    """Build and install ``Alfred.app`` under ``dest_dir``.
+    """Build and install ``Pennyworth.app`` under ``dest_dir``.
 
     ``dest_dir`` defaults to ``~/Applications`` (created if absent).
     Returns the path to the installed ``.app`` bundle.
@@ -107,6 +140,9 @@ def install_app_bundle(dest_dir: Path | None = None) -> Path:
     dest_dir.mkdir(parents=True, exist_ok=True)
 
     app = dest_dir / f"{BUNDLE_NAME}.app"
+    if app.exists():
+        shutil.rmtree(app)
+
     contents = app / "Contents"
     macos_dir = contents / "MacOS"
     resources_dir = contents / "Resources"
@@ -114,7 +150,6 @@ def install_app_bundle(dest_dir: Path | None = None) -> Path:
     for d in (macos_dir, resources_dir):
         d.mkdir(parents=True, exist_ok=True)
 
-    # Info.plist
     (contents / "Info.plist").write_text(
         _PLIST_TEMPLATE.format(
             name=BUNDLE_NAME,
@@ -123,26 +158,26 @@ def install_app_bundle(dest_dir: Path | None = None) -> Path:
         )
     )
 
-    # Shell launcher
-    launcher = macos_dir / "alfred"
+    launcher = macos_dir / "pennyworth"
     launcher.write_text(_LAUNCHER_TEMPLATE)
     launcher.chmod(launcher.stat().st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
 
-    # Portrait as icon (copy; macOS will use it as a fallback .png icon)
     from pennyworth.app.window import portrait_path
 
     portrait = portrait_path()
     if portrait.is_file():
-        shutil.copy2(portrait, resources_dir / "logo.png")
+        icns = resources_dir / "pennyworth.icns"
+        if not _build_icns(portrait, icns):
+            shutil.copy2(portrait, resources_dir / "pennyworth.png")
 
+    app.touch()
     return app
 
 
 def remove_app_bundle(dest_dir: Path | None = None) -> bool:
-    """Remove ``Alfred.app`` from ``dest_dir`` (default: ``~/Applications``).
+    """Remove ``Pennyworth.app`` from ``dest_dir`` (default: ``~/Applications``).
 
-    Returns ``True`` if the bundle existed and was removed, ``False`` if it
-    was not found.
+    Returns ``True`` if the bundle existed and was removed.
     """
     dest_dir = dest_dir or (Path.home() / "Applications")
     app = dest_dir / f"{BUNDLE_NAME}.app"
