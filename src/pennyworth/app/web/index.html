@@ -225,6 +225,13 @@
   .recent.active { background: var(--bg-elev); color: var(--text); }
   .recent .schedrow .t { flex: 1; overflow: hidden; text-overflow: ellipsis;
     white-space: nowrap; }
+  #titletip { position: fixed; z-index: 9999; pointer-events: none;
+    max-width: 320px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    background: var(--bg-elev); color: var(--text); border: 1px solid var(--border);
+    border-radius: 7px; padding: 4px 9px; font-size: 11.5px;
+    box-shadow: 0 4px 14px rgba(0,0,0,.35);
+    opacity: 0; transition: opacity .12s ease; }
+  #titletip.show { opacity: 1; }
   .recent .schedrow .live { width: 7px; height: 7px; border-radius: 50%;
     background: var(--accent); animation: pulse 1.1s ease-in-out infinite;
     flex-shrink: 0; }
@@ -2274,6 +2281,47 @@
     if (res && res.error) setStatus("⚠ " + res.error);
     loadRecents();
   }
+  // ---- title tooltip: hover a truncated chat title to see it in full -------
+  let _titleTipEl = null;
+  let _titleTipTarget = null;
+  function showTitleTip(anchor, text) {
+    if (!_titleTipEl) {
+      _titleTipEl = el("div"); _titleTipEl.id = "titletip";
+      document.body.append(_titleTipEl);
+    }
+    _titleTipEl.textContent = text;
+    _titleTipEl.classList.add("show");  // measurable before we position it
+    const r = anchor.getBoundingClientRect();
+    const h = _titleTipEl.offsetHeight;
+    // Default below the row; flip above when a row near the viewport bottom
+    // would push the tooltip off-screen. Clamp left so it never bleeds off-edge.
+    let top = r.bottom + 6;
+    if (top + h > window.innerHeight - 4) top = r.top - h - 6;
+    const left = Math.min(Math.round(r.left), window.innerWidth - _titleTipEl.offsetWidth - 4);
+    _titleTipEl.style.left = Math.max(4, left) + "px";
+    _titleTipEl.style.top = Math.round(top) + "px";
+    _titleTipTarget = anchor;
+  }
+  function hideTitleTip() {
+    if (_titleTipEl) _titleTipEl.classList.remove("show");
+    _titleTipTarget = null;
+  }
+  // WKWebView doesn't fire mouseenter until after a click — mousemove is reliable.
+  // One delegated listener replaces per-element mouseenter/mouseleave in buildChatRow.
+  document.addEventListener("mousemove", (ev) => {
+    const t = ev.target.closest && ev.target.closest(".recent .t");
+    if (t) {
+      if (t !== _titleTipTarget) {
+        if (t.scrollWidth > t.clientWidth) showTitleTip(t, t.textContent);
+        else hideTitleTip();
+      }
+    } else {
+      hideTitleTip();
+    }
+  });
+  // Belt-and-suspenders: if the cursor leaves the window straight off a title
+  // (no intervening mousemove), drop the tooltip so it can't linger.
+  document.addEventListener("mouseleave", hideTitleTip);
   function buildChatRow(it) {
     const active = activeChat && activeChat.id === it.id;
     const r = el("div", "recent" + (active ? " active" : ""));

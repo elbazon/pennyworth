@@ -164,6 +164,11 @@ class Bridge:
         self._lock = threading.Lock()
         self._chats: dict[str, dict] = {}
         self._session_cost = 0.0
+        # Usage is read from Anthropic's rate-limited OAuth endpoint; cache the
+        # last good result and serve it for a TTL (and as a fallback on error,
+        # e.g. HTTP 429) so opening the Usage tab can't hammer the endpoint.
+        self._usage_cache: dict | None = None
+        self._usage_cache_at = 0.0
         self._focused = True
         self._term_mgr = TermManager()
         # Live pywebview window for server-pushed events; None when headless.
@@ -1419,12 +1424,25 @@ class Bridge:
     def get_usage(self) -> dict:
         """Claude subscription quotas, read from Anthropic via the Claude Code
         keychain token. ``{tier, email, quotas[], sessionCost, extra?}`` or
-        ``{error}`` when the CLI isn't signed in / the call fails."""
+        ``{error}`` when the CLI isn't signed in / the call fails.
+
+        The Anthropic endpoint is rate-limited, so a fresh result is cached for
+        60s and returned for any call inside that window. On a failed fetch
+        (network error, HTTP 429) the last good result is served if we have one —
+        only a cold first-call failure surfaces the error to the UI."""
+        import time
+
         from pennyworth.app import usage as _usage
+
+        now = time.monotonic()
+        if self._usage_cache is not None and (now - self._usage_cache_at) < 60:
+            return self._usage_cache
 
         try:
             data = _usage.fetch_usage()
         except _usage.UsageError as exc:
+            if self._usage_cache is not None:
+                return self._usage_cache  # stale-but-good beats an error card
             return {"error": str(exc)}
         status = _usage.fetch_auth_status()
         quotas = []
@@ -1459,6 +1477,8 @@ class Bridge:
                 "limit": float(extra.get("monthly_limit") or 0),
                 "currency": extra.get("currency", "USD"),
             }
+        self._usage_cache = out
+        self._usage_cache_at = time.monotonic()
         return out
 
     def list_mcp(self, force: bool = False) -> dict:
