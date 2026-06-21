@@ -71,6 +71,13 @@ contract:
 
 Small, focused pull requests are easier to review and merge than sprawling ones.
 
+## Cutting a release
+
+Maintainers only. Releases are tag-driven: bump with `scripts/cut-release.sh X.Y.Z`,
+push the `vX.Y.Z` tag, and the **Release** workflow builds, tests, publishes to PyPI
+(via Trusted Publishing — no token), and cuts a GitHub Release. Full guide,
+including the one-time PyPI setup, in [`docs/releasing.md`](docs/releasing.md).
+
 ## Licensing & sign-off
 
 This project is open source under [Apache-2.0](LICENSE), created and maintained
