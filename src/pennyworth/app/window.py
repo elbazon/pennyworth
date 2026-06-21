@@ -144,8 +144,23 @@ def _adopt_identity_post_launch() -> None:
     AppHelper.callAfter(_on_main)
 
 
+def _ensure_shortcut() -> None:
+    """Install Pennyworth.app and dock it on first run. Best-effort, silent."""
+    if sys.platform != "darwin":
+        return
+    app_path = Path.home() / "Applications" / "Pennyworth.app"
+    if app_path.exists():
+        return
+    try:
+        from pennyworth.app.bundle import install_app_bundle
+        install_app_bundle()
+    except Exception:
+        pass
+
+
 def main() -> int:
     """Open the desktop window. Blocks until the window is closed."""
+    _ensure_shortcut()
     _purge_webkit_cache()
     _adopt_identity_pre_launch()
     try:

@@ -171,7 +171,30 @@ def install_app_bundle(dest_dir: Path | None = None) -> Path:
             shutil.copy2(portrait, resources_dir / "pennyworth.png")
 
     app.touch()
+    _dock_app(app)
     return app
+
+
+def _dock_app(app_path: Path) -> None:
+    """Add ``app_path`` to the macOS Dock (persistent-apps). Best-effort."""
+    import subprocess
+
+    tile = (
+        "<dict><key>tile-data</key><dict>"
+        "<key>file-data</key><dict>"
+        "<key>_CFURLString</key><string>{path}</string>"
+        "<key>_CFURLStringType</key><integer>0</integer>"
+        "</dict></dict></dict>"
+    ).format(path=str(app_path))
+    try:
+        subprocess.run(
+            ["defaults", "write", "com.apple.dock", "persistent-apps",
+             "-array-add", tile],
+            check=True, capture_output=True,
+        )
+        subprocess.run(["killall", "Dock"], check=True, capture_output=True)
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        pass
 
 
 def remove_app_bundle(dest_dir: Path | None = None) -> bool:
