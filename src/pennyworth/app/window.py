@@ -54,7 +54,7 @@ def index_path() -> Path:
 
 def portrait_path() -> Path:
     """Absolute path to Alfred's portrait / app avatar."""
-    return _web_dir() / "alfred.png"
+    return _web_dir() / "logo.png"
 
 
 def index_url() -> str:

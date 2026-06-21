@@ -13,7 +13,7 @@ The bundle layout::
         MacOS/
           alfred          ← shell launcher that exec's 'alfred app'
         Resources/
-          alfred.png      ← Alfred's portrait (copied as the app icon)
+          logo.png        ← Pennyworth portrait (copied as the app icon)
 
 Use ``install_app_bundle()`` from Python, or invoke via the CLI:
 ``alfred app --install``.
@@ -133,7 +133,7 @@ def install_app_bundle(dest_dir: Path | None = None) -> Path:
 
     portrait = portrait_path()
     if portrait.is_file():
-        shutil.copy2(portrait, resources_dir / "alfred.png")
+        shutil.copy2(portrait, resources_dir / "logo.png")
 
     return app
 

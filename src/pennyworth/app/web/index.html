@@ -1130,7 +1130,7 @@
   <button class="brainbtn" id="brainBtn" title="Reasoning &amp; work">🧠</button>
   <aside>
     <div class="brand">
-      <img class="alfred" src="alfred.png" alt="" />
+      <img class="alfred" src="logo.png" alt="" />
       <div><b id="brandName">Alfred</b><span id="brandSub">at your service</span></div>
     </div>
     <button class="newchat" id="newChatBtn">＋&nbsp; New chat</button>
@@ -1787,7 +1787,7 @@
   }
   function addWelcome(chat) {
     const w = el("div", "welcome");
-    const img = el("img"); img.src = "alfred.png";
+    const img = el("img"); img.src = "logo.png";
     const ultron = document.body.classList.contains("ultron");
     w.append(img,
       el("h1", "", ultron ? "Speak. I am listening." : "Good day. How may I be of service?"),
@@ -2558,7 +2558,7 @@
     const t = chatTurn(chat);
     if (!t.bubble) {
       const m = el("div", "msg alfred");
-      const img = el("img"); img.src = "alfred.png";
+      const img = el("img"); img.src = "logo.png";
       t.bubble = el("div", "body");
       m.append(img, t.bubble);
       t.root.append(m);
@@ -2700,7 +2700,7 @@
   }
   function addError(chat, text) {
     const m = el("div", "msg alfred error");
-    const img = el("img"); img.src = "alfred.png";
+    const img = el("img"); img.src = "logo.png";
     m.append(img, el("div", "body", text));
     (chat.turn ? chat.turn.root : chat.col).append(m);
   }
@@ -3345,7 +3345,7 @@
     addUser(chat, text);
     const out = await api().run_slash(text);
     const m = el("div", "msg alfred");
-    const img = el("img"); img.src = "alfred.png";
+    const img = el("img"); img.src = "logo.png";
     const body = el("div", "body slashout",
       out.error ? "⚠ " + out.error : out.output);
     m.append(img, body);
@@ -3968,7 +3968,7 @@
   }
   function addAlfredStatic(chat, text, meta, sessionId, ts) {
     const m = el("div", "msg alfred");
-    const img = el("img"); img.src = "alfred.png";
+    const img = el("img"); img.src = "logo.png";
     const body = el("div", "body");
     body.innerHTML = md(text || "");
     m.append(img, body);
