@@ -26,6 +26,44 @@
        pinned at a narrow column, capped so prose stays readable. The composer,
        work strip, status and meta rows all share it so everything aligns. */
     --col-max: min(1480px, 94%);
+    /* Wallpaper — set by applyWallpaper() when the user picks a background
+       image. The dim overlay sits between the image and the UI surfaces. */
+    --wallpaper-url: none;
+    --wallpaper-dim: 0.45;
+  }
+  /* Wallpaper image — painted on a fixed, viewport-sized pseudo-element. A
+     fixed/inset:0 box is EXACTLY the viewport, so `cover` scales the photo to
+     cover it while preserving aspect ratio (no stretch). Putting the image on
+     `body` instead mis-sized it: body is a flex container, and cover computed
+     against the flex box rather than the viewport, distorting the image. */
+  body.has-wallpaper::before {
+    content: ""; position: fixed; inset: 0; z-index: -2; pointer-events: none;
+    background-image: var(--wallpaper-url);
+    background-size: cover; background-position: center; background-repeat: no-repeat;
+  }
+  /* Dim overlay — a fixed --bg layer at reduced opacity above the image but
+     below content, so the photo shows through yet text stays readable. */
+  body.has-wallpaper::after {
+    content: ""; position: fixed; inset: 0; z-index: -1;
+    background: var(--bg); opacity: var(--wallpaper-dim); pointer-events: none;
+  }
+  /* Structural containers are opaque var(--bg) by default and would blanket the
+     image — make them transparent so the body wallpaper shows through. */
+  body.has-wallpaper .main,
+  body.has-wallpaper main#chat,
+  body.has-wallpaper .view {
+    background: transparent !important;
+  }
+  /* Leaf surfaces frost instead of going clear: the blur keeps text legible over
+     any photo, no theme-specific colour needed. `aside` is the real sidebar
+     element (not `.side`); `.pane` is the chat window itself. */
+  body.has-wallpaper aside,
+  body.has-wallpaper .pane,
+  body.has-wallpaper .composer-zone,
+  body.has-wallpaper .band {
+    background: color-mix(in srgb, var(--bg) 68%, transparent) !important;
+    backdrop-filter: blur(16px) saturate(1.3);
+    -webkit-backdrop-filter: blur(16px) saturate(1.3);
   }
   /* Persona / Ultron recolour ONLY a chat's own surface — never the sidebar,
      nav, or app chrome. The accent is a property of the CHAT, applied to that
@@ -78,19 +116,31 @@
     transition: background .5s ease; }
 
   /* ---------- sidebar ---------- */
-  aside { width: 240px; background: var(--bg-side);
+  /* Width is a CSS var so the drag-resize handle and the hide offset stay in
+     sync — change one place, both follow. */
+  :root { --side-w: 240px; }
+  aside { width: var(--side-w); background: var(--bg-side);
     border-right: 1px solid var(--border);
     display: flex; flex-direction: column; padding: 14px 10px 10px;
-    flex-shrink: 0; min-height: 0;
+    flex-shrink: 0; min-height: 0; position: relative;
     transition: margin-left .22s ease; }
-  body.sidehidden aside { margin-left: -240px; }
+  body.sidehidden aside { margin-left: calc(-1 * var(--side-w)); }
+  /* Drag handle on the sidebar's right edge — a hit-target wider than its
+     visible hairline, which lights up on hover/drag. */
+  .sidegrip { position: absolute; top: 0; right: -3px; width: 7px; height: 100%;
+    cursor: col-resize; z-index: 25; }
+  .sidegrip::after { content: ""; position: absolute; top: 0; right: 3px;
+    width: 1px; height: 100%; background: transparent; transition: background .12s; }
+  .sidegrip:hover::after, body.side-resizing .sidegrip::after {
+    background: var(--accent); }
+  body.side-resizing { cursor: col-resize; user-select: none; }
   .hamb { position: fixed; top: 12px; left: 12px; z-index: 30;
     width: 34px; height: 34px; border-radius: 10px;
     border: 1px solid transparent; background: transparent;
     color: var(--text-dim); font-size: 17px; cursor: pointer; }
   .hamb:hover { background: var(--bg-elev); color: var(--text);
     border-color: var(--border); }
-  body:not(.sidehidden) .hamb { left: 198px; }
+  body:not(.sidehidden) .hamb { left: calc(var(--side-w) - 42px); }
   .hamb { transition: left .22s ease; }
   body:not(.sidehidden) .brand { padding-right: 36px; }
   .brand { display: flex; align-items: center; gap: 10px; padding: 2px 8px 12px; }
@@ -108,6 +158,53 @@
   .sidescroll { flex: 1; overflow-y: auto; min-height: 0; margin: 0 -4px; padding: 0 4px; }
   .sect { font-size: 10.5px; letter-spacing: .8px; color: var(--text-dim);
     text-transform: uppercase; padding: 10px 10px 4px; }
+  /* A category section header: collapsible (chevron), with a live count and a
+     hover-revealed ⋯ for rename / delete. The whole header toggles collapse;
+     the manage menu stops that propagation so it doesn't fold on a click. */
+  .sect.catsect { display: flex; align-items: center; gap: 5px; cursor: pointer;
+    user-select: none; position: relative; }
+  .sect.catsect:hover { color: var(--text); }
+  .cat-chev { flex: none; transition: transform .12s ease; transform: rotate(90deg);
+    opacity: .7; }
+  .sect.catsect.collapsed .cat-chev { transform: rotate(0deg); }
+  .cat-label { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .cat-count { flex: none; font-size: 10px; letter-spacing: 0; opacity: .55;
+    background: var(--bg-input); border-radius: 8px; padding: 1px 6px; }
+  .cat-managewrap { flex: none; position: relative; }
+  .cat-manage { border: none; background: none; color: var(--text-dim);
+    cursor: pointer; font-size: 13px; padding: 0 2px; border-radius: 5px;
+    visibility: hidden; line-height: 1; }
+  .sect.catsect:hover .cat-manage { visibility: visible; }
+  .cat-manage:hover { background: var(--bg-input); color: var(--text); }
+  /* Drag a chat between categories: the row dims while dragged; a valid drop
+     target (a category header, or the "Chats" header) lights up. */
+  .recent.dragging { opacity: .45; }
+  .sect.dropok { background: var(--bg-input); color: var(--text);
+    outline: 1px dashed var(--accent); outline-offset: -2px; border-radius: 8px; }
+  /* Chat search — a quiet field above the list. Typing swaps the list for a
+     results view; clearing (✕ / Esc) restores it. */
+  .searchwrap { position: relative; padding: 4px 6px 2px; }
+  #chatSearch { width: 100%; box-sizing: border-box; font-size: 12.5px;
+    color: var(--text); background: #ffffff10; border: 1px solid #ffffff26;
+    border-radius: 8px; padding: 6px 26px 6px 10px; outline: none; }
+  #chatSearch:focus { border-color: var(--accent); }
+  #chatSearch::placeholder { color: var(--text-dim); }
+  #chatSearchClear { position: absolute; right: 12px; top: 50%;
+    transform: translateY(-40%); background: none; border: none; cursor: pointer;
+    color: var(--text-dim); font-size: 12px; padding: 2px; }
+  #chatSearchClear:hover { color: var(--text); }
+  #searchResults { padding: 2px 0 6px; }
+  .sresult { padding: 7px 10px; border-radius: 9px; cursor: pointer; }
+  .sresult:hover { background: #ffffff12; }
+  .sresult .st { font-size: 13px; color: var(--text); display: flex;
+    justify-content: space-between; gap: 8px; }
+  .sresult .shits { color: var(--text-dim); font-size: 11px; flex-shrink: 0; }
+  .sresult .sx { font-size: 11.5px; color: var(--text-dim); margin-top: 2px;
+    line-height: 1.35; overflow: hidden; display: -webkit-box;
+    -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+  .sempty { padding: 12px 12px; font-size: 12px; color: var(--text-dim); }
+  mark.findhit, .sresult mark { background: var(--accent); color: #fff;
+    border-radius: 3px; padding: 0 2px; }
   .chatitem { display: flex; align-items: center; gap: 6px;
     padding: 7px 8px 7px 10px; border-radius: 9px; cursor: pointer;
     color: var(--text-dim); font-size: 13px; }
@@ -352,6 +449,16 @@
   .msg.user .ts { display: block; text-align: right; font-size: 10.5px;
     color: var(--text-dim); margin: 3px 4px 4px 0; opacity: .8;
     -webkit-user-select: none; user-select: none; }
+  .msgattach { display: flex; flex-wrap: wrap; gap: 6px; justify-content: flex-end;
+    margin: 6px 0 0; }
+  .attach-thumb { max-width: 180px; max-height: 160px; border-radius: 12px;
+    border: 1px solid var(--border); object-fit: cover; cursor: pointer;
+    background: var(--bg-elev); }
+  .attach-thumb:hover { border-color: var(--accent); }
+  .attach-fchip { display: inline-flex; align-items: center; gap: 5px;
+    font-size: 11.5px; color: var(--text-dim); background: var(--bg-elev);
+    border: 1px solid var(--border); border-radius: 999px; padding: 4px 11px;
+    max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .msg.alfred { align-self: flex-start; max-width: 82%; display: flex; gap: 12px;
     -webkit-user-select: text; user-select: text; }
   .msg.alfred img { width: 42px; height: 42px; border-radius: 50%;
@@ -371,6 +478,30 @@
   .turnmeta .sessid:hover { color: var(--accent); opacity: 1; }
   /* Reply time — the first field in Alfred's meta row (model · cost · session). */
   .turnmeta .ts { opacity: .9; }
+
+  /* Per-reply feedback — a quiet thumbs-up / thumbs-down on the meta row that
+     records into the self-improvement journal `/reflect` reads. Selecting a
+     thumb reveals an optional note + Send; once sent, the group collapses to a
+     short confirmation. Muted by default so it never competes with the reply. */
+  .turnmeta .fb { display: inline-flex; align-items: center; gap: 6px;
+    margin-left: 8px; vertical-align: middle; }
+  .turnmeta .fb::before { content: "·"; opacity: .5; margin-right: 2px; }
+  .fbbtn { background: none; border: none; padding: 2px; cursor: pointer;
+    color: var(--text-dim); opacity: .55; display: inline-flex;
+    border-radius: 4px; transition: opacity .12s, color .12s, background .12s; }
+  .fbbtn:hover { opacity: 1; background: #ffffff14; }
+  .fbbtn.sel[data-r="up"] { opacity: 1; color: #3fb950; }
+  .fbbtn.sel[data-r="down"] { opacity: 1; color: #e5534b; }
+  .fbnote { font-size: 11px; color: var(--text); background: #ffffff10;
+    border: 1px solid #ffffff26; border-radius: 5px; padding: 2px 7px;
+    width: 200px; outline: none; }
+  .fbnote:focus { border-color: var(--accent); }
+  .fbsend { font-size: 10.5px; cursor: pointer; color: var(--accent);
+    background: none; border: 1px solid currentColor; border-radius: 5px;
+    padding: 2px 8px; }
+  .fbsend:hover { background: #ffffff12; }
+  .fbdone { font-size: 11px; color: #3fb950; opacity: .9; }
+  .fbdone.err { color: #e5534b; }
 
   /* Section headings carry the persona accent so a long reply reads as
      colour-separated blocks rather than one flat column — the heading is the
@@ -1023,6 +1154,7 @@
       <span id="footInfo"></span>
       <a id="updateBadge" hidden></a>
     </div>
+    <div class="sidegrip" id="sideGrip" title="Drag to resize"></div>
   </aside>
 
   <div class="main">
@@ -1406,6 +1538,29 @@
     scrollBtn.classList.toggle("show", gap > 120);
   }
   let _scrollRaf = false;
+
+  /* ---- wallpaper, cost mode, category data ---- */
+  let _wallpaperDataUrl = "";
+  let _costMode = "cost";
+  try { _costMode = localStorage.getItem("costDisplay") || "cost"; } catch (e) { /* */ }
+  function setCostMode(mode) {
+    _costMode = ["none", "cost", "tokens"].includes(mode) ? mode : "cost";
+    try { localStorage.setItem("costDisplay", _costMode); } catch (e) { /* */ }
+  }
+  function renderCost(c) {
+    if (c && _costMode === "cost" && c.cost > 0) {
+      return " · " + (c.cost > 0.01 ? "$" + c.cost.toFixed(2) : "$" + c.cost.toFixed(4));
+    } else if (c && _costMode === "tokens" && c.contextTokens > 0) {
+      return " · " + c.contextTokens + "t";
+    }
+    return "";
+  }
+  let _catCollapseState = {};
+  try {
+    const st = localStorage.getItem("catCollapse");
+    _catCollapseState = st ? JSON.parse(st) : {};
+  } catch (e) { /* */ }
+
   function scheduleScrollBtn() {
     if (_scrollRaf) return;
     _scrollRaf = true;
@@ -1979,14 +2134,158 @@
     // Pinned chats float to the very top; order is otherwise preserved (stable).
     return rows.filter((r) => r.pinned).concat(rows.filter((r) => !r.pinned));
   }
+  /* ---- category support ---- */
+  function catKey(s) { return String(s || "").trim().toLowerCase(); }
+  let _collapsedCats = new Set();
+  try { _collapsedCats = new Set(JSON.parse(localStorage.getItem("collapsedCats") || "[]")); }
+  catch (e) { /* */ }
+  function _saveCollapsedCats() {
+    try { localStorage.setItem("collapsedCats", JSON.stringify([..._collapsedCats])); }
+    catch (e) { /* */ }
+  }
+  function categoryIndex() {
+    const byKey = new Map();
+    for (const s of _storedChats) {
+      const k = catKey(s.category);
+      if (!k) continue;
+      if (!byKey.has(k)) byKey.set(k, new Map());
+      const disp = String(s.category).trim();
+      const spell = byKey.get(k);
+      spell.set(disp, (spell.get(disp) || 0) + 1);
+    }
+    const out = [];
+    for (const [k, spell] of byKey) {
+      let name = "", best = -1, total = 0;
+      for (const [disp, n] of spell) {
+        total += n;
+        if (n > best || (n === best && disp.localeCompare(name) < 0)) { best = n; name = disp; }
+      }
+      out.push({ key: k, name, count: total });
+    }
+    return out.sort((a, b) => a.name.localeCompare(b.name));
+  }
   function renderChatList() {
+    hideTitleTip();
     const list = $("chatList");
     list.innerHTML = "";
-    for (const it of chatListRows()) list.append(buildChatRow(it));
+    const rows = chatListRows();
+    const pinned = rows.filter((r) => r.pinned);
+    const rest = rows.filter((r) => !r.pinned);
+    const cats = categoryIndex();
+    const hasCats = cats.length > 0;
+    const addPlainSection = (label, items, dropCategory) => {
+      if (!items.length) return;
+      if (label) {
+        const h = el("div", "sect", label);
+        if (dropCategory != null) makeCatDropTarget(h, dropCategory);
+        list.append(h);
+      }
+      for (const it of items) list.append(buildChatRow(it));
+    };
+    addPlainSection(
+      pinned.length && (hasCats || rest.some((r) => !catKey(r.category))) ? "Pinned" : "",
+      pinned, null);
+    for (const cat of cats) {
+      const items = rest.filter((r) => catKey(r.category) === cat.key);
+      if (items.length) addCategorySection(list, cat, items);
+    }
+    const uncategorised = rest.filter((r) => !catKey(r.category));
+    addPlainSection((hasCats || pinned.length) ? "Chats" : "", uncategorised, "");
+  }
+  function addCategorySection(list, cat, items) {
+    const collapsed = _collapsedCats.has(cat.key);
+    const hdr = el("div", "sect catsect" + (collapsed ? " collapsed" : ""));
+    const chev = svgIcon(CHEVRON_PATH, "cat-chev", 12);
+    const label = el("span", "cat-label", cat.name);
+    const count = el("span", "cat-count", String(items.length));
+    const mwrap = el("span", "cat-managewrap");
+    const mbtn = el("button", "cat-manage", "⋯"); mbtn.title = "Category options";
+    const menu = el("div", "popmenu");
+    const renameC = el("button", "", "Rename category…");
+    const delC = el("button", "danger", "Delete category");
+    menu.append(renameC, delC);
+    mwrap.append(mbtn, menu);
+    hdr.append(chev, label, count, mwrap);
+    makeCatDropTarget(hdr, cat.name);
+    hdr.addEventListener("click", (ev) => {
+      if (ev.target.closest(".cat-managewrap")) return;
+      if (_collapsedCats.has(cat.key)) _collapsedCats.delete(cat.key);
+      else _collapsedCats.add(cat.key);
+      _saveCollapsedCats();
+      renderChatList();
+    });
+    mbtn.addEventListener("click", (ev) => { ev.stopPropagation();
+      document.querySelectorAll(".popmenu.open").forEach((m) => m !== menu && m.classList.remove("open"));
+      menu.classList.toggle("open"); });
+    renameC.addEventListener("click", (ev) => {
+      ev.stopPropagation(); menu.classList.remove("open");
+      const inp = el("input", "renamefield"); inp.value = cat.name;
+      let settled = false;
+      const commit = async (save) => {
+        if (settled) return; settled = true;
+        const nv = inp.value.trim();
+        if (save && nv && nv !== cat.name && api()) {
+          const res = await api().rename_category(cat.name, nv);
+          if (res && res.error) setStatus("⚠ " + res.error);
+        }
+        loadRecents();
+      };
+      inp.addEventListener("click", (e) => e.stopPropagation());
+      inp.addEventListener("keydown", (e) => { e.stopPropagation();
+        if (e.key === "Enter") { e.preventDefault(); commit(true); }
+        else if (e.key === "Escape") { e.preventDefault(); commit(false); } });
+      inp.addEventListener("blur", () => commit(true));
+      label.replaceWith(inp); inp.focus(); inp.select();
+    });
+    delC.addEventListener("click", async (ev) => {
+      ev.stopPropagation(); menu.classList.remove("open");
+      if (api()) {
+        const res = await api().delete_category(cat.name);
+        if (res && res.error) setStatus("⚠ " + res.error);
+      }
+      loadRecents();
+    });
+    list.append(hdr);
+    if (!collapsed) for (const it of items) list.append(buildChatRow(it));
+  }
+  let _dragChatId = "";
+  function makeCatDropTarget(eln, category) {
+    eln.addEventListener("dragover", (ev) => {
+      if (!_dragChatId) return;
+      ev.preventDefault();
+      ev.dataTransfer.dropEffect = "move";
+      eln.classList.add("dropok");
+    });
+    eln.addEventListener("dragleave", () => eln.classList.remove("dropok"));
+    eln.addEventListener("drop", (ev) => {
+      ev.preventDefault();
+      eln.classList.remove("dropok");
+      const id = _dragChatId || (ev.dataTransfer && ev.dataTransfer.getData("text/pennyworth-chat"));
+      if (id) assignCategory(id, category);
+    });
+  }
+  async function assignCategory(chatId, name) {
+    if (!chatId || !api()) { loadRecents(); return; }
+    const live = chats.get(chatId);
+    const isStored = _storedChats.some((s) => s.id === chatId);
+    if (!isStored && live && live.messages.length)
+      await api().persist_chat(chatId, { title: live.title, messages: live.messages });
+    const res = await api().set_chat_category(chatId, name);
+    if (res && res.error) setStatus("⚠ " + res.error);
+    loadRecents();
   }
   function buildChatRow(it) {
     const active = activeChat && activeChat.id === it.id;
     const r = el("div", "recent" + (active ? " active" : ""));
+    r.draggable = true;
+    r.addEventListener("dragstart", (ev) => {
+      if (ev.target.closest("input, textarea, .popmenu")) { ev.preventDefault(); return; }
+      _dragChatId = it.id;
+      ev.dataTransfer.effectAllowed = "move";
+      ev.dataTransfer.setData("text/pennyworth-chat", it.id);
+      r.classList.add("dragging");
+    });
+    r.addEventListener("dragend", () => { _dragChatId = ""; r.classList.remove("dragging"); });
     const head = el("div", "schedrow");
     // Working → a spinning loader; unread (a new response you haven't opened) →
     // a static green light; read → nothing (email-style unread → read).
@@ -2034,6 +2333,47 @@
       inp.addEventListener("blur", () => commit(true));
       titleEl.replaceWith(inp); inp.focus(); inp.select();
     });
+    const catBtn = el("button", "", it.category ? "Category…" : "Add to category…");
+    const chooser = el("div", "popmenu catchooser");
+    catBtn.addEventListener("click", (ev) => {
+      ev.stopPropagation(); menu.classList.remove("open");
+      chooser.innerHTML = "";
+      const curKey = catKey(it.category);
+      for (const cat of categoryIndex()) {
+        const b = el("button", "", (cat.key === curKey ? "✓ " : "") + cat.name);
+        b.addEventListener("click", (e) => { e.stopPropagation();
+          chooser.classList.remove("open"); assignCategory(it.id, cat.name); });
+        chooser.append(b);
+      }
+      const nb = el("button", "", "New category…");
+      nb.addEventListener("click", (e) => { e.stopPropagation();
+        chooser.classList.remove("open"); openNewCategoryField(it, titleEl); });
+      chooser.append(nb);
+      if (it.category) {
+        const rm = el("button", "danger", "Remove from category");
+        rm.addEventListener("click", (e) => { e.stopPropagation();
+          chooser.classList.remove("open"); assignCategory(it.id, ""); });
+        chooser.append(rm);
+      }
+      document.querySelectorAll(".popmenu.open").forEach((m) => m !== chooser && m.classList.remove("open"));
+      chooser.classList.toggle("open");
+    });
+    const openNewCategoryField = (target, titleEl) => {
+      const inp = el("input", "renamefield");
+      inp.value = ""; inp.placeholder = "New category name";
+      let settled = false;
+      const commit = (save) => {
+        if (settled) return; settled = true;
+        const cat = inp.value.trim();
+        if (save && cat) assignCategory(target.id, cat); else loadRecents();
+      };
+      inp.addEventListener("click", (e) => e.stopPropagation());
+      inp.addEventListener("keydown", (e) => { e.stopPropagation();
+        if (e.key === "Enter") { e.preventDefault(); commit(true); }
+        else if (e.key === "Escape") { e.preventDefault(); commit(false); } });
+      inp.addEventListener("blur", () => commit(true));
+      titleEl.replaceWith(inp); inp.focus(); inp.select();
+    };
     const delBtn = el("button", "danger", "Delete");
     delBtn.addEventListener("click", async (ev) => {
       ev.stopPropagation(); menu.classList.remove("open");
@@ -2047,11 +2387,11 @@
       ev.stopPropagation(); menu.classList.remove("open");
       openToSide(it.id);
     });
-    menu.append(sideBtn, pinBtn, renameBtn, delBtn);
+    menu.append(sideBtn, pinBtn, renameBtn, catBtn, delBtn);
     kb.addEventListener("click", (ev) => { ev.stopPropagation();
       document.querySelectorAll(".popmenu.open").forEach((m) => m !== menu && m.classList.remove("open"));
       menu.classList.toggle("open"); });
-    kw.append(kb, menu);
+    kw.append(kb, menu, chooser);
     head.append(kw);
     r.append(head);
     const bits = [];
@@ -2300,18 +2640,61 @@
       if (paneVisible(chat)) scrollChatBottom(chat);
     });
   }
+  // Split "Attached files:\n- /path/…" trailer off the message body so we can
+  // show the files as thumbnails/chips rather than dumping raw paths.
+  function splitAttached(text) {
+    const marker = "\n\nAttached files:\n";
+    const i = text.indexOf(marker);
+    if (i < 0) return { body: text, paths: [] };
+    const paths = text.slice(i + marker.length).split("\n")
+      .map((l) => l.replace(/^-\s*/, "").trim()).filter(Boolean);
+    return { body: text.slice(0, i), paths };
+  }
+  // Pasted images arrive as a data URL in the paste handler — cache by path
+  // so the thumbnail renders from memory with no bridge round-trip.
+  const _pastedThumbs = new Map();
+  // Render each attached path into container: image as inline thumbnail,
+  // anything else as a filename chip.
+  async function renderUserAttachments(container, paths) {
+    for (const path of paths) {
+      const name = path.split("/").pop() || path;
+      let dataUrl = _pastedThumbs.get(path) || "";
+      if (!dataUrl) {
+        try {
+          const info = api() && await api().attachment_thumbnail(path);
+          if (info && info.ok && info.dataUrl) dataUrl = info.dataUrl;
+        } catch (e) { /* */ }
+      }
+      if (dataUrl) {
+        const img = el("img", "attach-thumb");
+        img.src = dataUrl; img.alt = name; img.title = name;
+        img.addEventListener("click", () => api() && api().open_path && api().open_path(path));
+        container.append(img);
+      } else {
+        const chip = el("span", "attach-fchip", "📎 " + name);
+        chip.title = path;
+        container.append(chip);
+      }
+    }
+  }
   function addUser(chat, text, replay, ts) {
     chat.welcome?.remove(); chat.welcome = null;
     chat.turnPrompt = text;  // labels this turn's section in the 🧠 drawer
     const m = el("div", "msg user");
-    m.append(el("div", "body", text));
+    const { body, paths } = splitAttached(text);
+    if (body) m.append(el("div", "body", body));
+    if (paths.length) {
+      const att = el("div", "msgattach");
+      m.append(att);
+      renderUserAttachments(att, paths);
+    }
     // Stamp the send time. Live sends get `now`; a replay passes the stored ts
     // (absent on pre-feature messages → no time shown rather than a fake one).
     if (ts == null && !replay) ts = Date.now();
     if (ts != null) m.append(el("div", "ts", fmtTime(ts)));
     chat.col.append(m);
     if (!replay) chat.messages.push({ role: "user", text, ts });
-    if (chat.title === "New chat") chat.title = text.slice(0, 42);
+    if (chat.title === "New chat") chat.title = (body || paths[0]?.split("/").pop() || text).slice(0, 42);
     renderChatList();
     if (paneVisible(chat)) scrollChatBottom(chat);
   }
@@ -3180,6 +3563,34 @@
   }
   $("termChip").addEventListener("click", toggleTerminal);
   $("termClose").addEventListener("click", closeTerminal);
+
+  // Sidebar width drag — pull the right edge to resize (persisted, clamped).
+  const SIDE_MIN = 180, SIDE_MAX = 480;
+  function setSideWidth(px, persist) {
+    const w = Math.max(SIDE_MIN, Math.min(SIDE_MAX, Math.round(px)));
+    document.documentElement.style.setProperty("--side-w", w + "px");
+    if (persist) { try { localStorage.setItem("sidebarWidth", String(w)); } catch (e) { /* */ } }
+  }
+  try {
+    const sw = parseInt(localStorage.getItem("sidebarWidth"), 10);
+    if (sw) setSideWidth(sw, false);
+  } catch (e) { /* */ }
+  let sideDrag = null;
+  $("sideGrip").addEventListener("mousedown", (ev) => {
+    sideDrag = { x: ev.clientX, w: document.querySelector("aside").offsetWidth };
+    document.body.classList.add("side-resizing");
+    ev.preventDefault();
+  });
+  document.addEventListener("mousemove", (ev) => {
+    if (!sideDrag) return;
+    setSideWidth(sideDrag.w + (ev.clientX - sideDrag.x), false);
+  });
+  document.addEventListener("mouseup", () => {
+    if (!sideDrag) return;
+    sideDrag = null;
+    document.body.classList.remove("side-resizing");
+    setSideWidth(document.querySelector("aside").offsetWidth, true);
+  });
 
   // Height drag — pull the top handle to resize the terminal (persisted).
   let termDrag = null;

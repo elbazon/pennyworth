@@ -949,10 +949,58 @@ class Bridge:
                     "turns": sum(1 for m in messages if m.get("role") == "user"),
                     "cost": doc.get("cost"),
                     "pinned": bool(doc.get("pinned")),
+                    "category": str(doc.get("category") or ""),
                 }
             )
-        rows.sort(key=lambda r: (r["pinned"], r["updated"]), reverse=True)
-        return rows[:25]
+        rows.sort(key=lambda r: (not (r["pinned"] or r["category"]), -r["updated"]))
+        return rows[:40]
+
+    def search_chats(self, query: str, limit: int = 40) -> list[dict]:
+        """Full-text search across every stored chat. Returns matching chats
+        with id, title, age, hit count, and a few snippet excerpts."""
+        q = str(query or "").strip().casefold()
+        if not q:
+            return []
+        out = []
+        for path in self._chats_dir().glob("*.json"):
+            try:
+                doc = json.loads(path.read_text())
+            except (OSError, json.JSONDecodeError):
+                continue
+            hits = 0
+            snippets: list[str] = []
+            title = str(doc.get("title") or "")
+            if q in title.casefold():
+                hits += 1
+                snippets.append(title)
+            for m in doc.get("messages") or []:
+                body = str(m.get("text") or "")
+                lbody = body.casefold()
+                if q in lbody:
+                    hits += 1
+                    idx = lbody.index(q)
+                    start = max(0, idx - 60)
+                    end = min(len(body), idx + len(q) + 60)
+                    snippet = (
+                        ("…" if start else "")
+                        + body[start:end]
+                        + ("…" if end < len(body) else "")
+                    )
+                    if len(snippets) < 3:
+                        snippets.append(snippet)
+            if hits:
+                out.append(
+                    {
+                        "id": doc.get("id") or path.stem,
+                        "title": title or "Chat",
+                        "age": _humanize_age(doc.get("updated") or 0),
+                        "updated": doc.get("updated") or 0,
+                        "hits": hits,
+                        "snippets": snippets,
+                    }
+                )
+        out.sort(key=lambda r: (-r["hits"], -r["updated"]))
+        return out[:limit]
 
     def load_app_chat(self, chat_id: str) -> dict:
         path = self._chats_dir() / f"{self._safe_id(chat_id)}.json"
@@ -1437,13 +1485,214 @@ class Bridge:
     def check_for_update(self) -> dict:
         return {"available": False, "stale": False}
 
+    # --- attachment thumbnail -------------------------------------------
+
+    def attachment_thumbnail(self, path: str, max_bytes: int = 6_000_000) -> dict:
+        """Data URL for an image attachment so the page can show an inline thumbnail.
+
+        The webview can't load an arbitrary file:// path, so images come back
+        inline. Only image mime types are returned up to max_bytes; anything else
+        yields {"ok": False} and the page falls back to a filename chip."""
+        import base64
+        import mimetypes
+        from pathlib import Path
+
+        try:
+            p = Path(path)
+            if not p.is_file():
+                return {"ok": False}
+            mime, _ = mimetypes.guess_type(str(p))
+            if not (mime and mime.startswith("image/")):
+                return {"ok": False, "name": p.name}
+            size = p.stat().st_size
+            if size <= 0 or size > max_bytes:
+                return {"ok": False, "name": p.name}
+            b64 = base64.b64encode(p.read_bytes()).decode("ascii")
+            return {"ok": True, "dataUrl": f"data:{mime};base64,{b64}", "name": p.name}
+        except OSError:
+            return {"ok": False}
+
+    # --- feedback -------------------------------------------------------
+
+    def save_feedback(
+        self, chat_id: str, rating: str, note: str = "", reply_text: str = ""
+    ) -> dict:
+        """Record a thumbs-up / thumbs-down on one of Alfred's replies.
+
+        Appended to ~/.pennyworth/app/feedback.jsonl for later review."""
+        import datetime as _dt
+
+        if rating not in ("up", "down"):
+            return {"error": "rating must be 'up' or 'down'"}
+        chat = self._chat(chat_id) if chat_id else {}
+        entry = {
+            "ts": _dt.datetime.now().isoformat(timespec="seconds"),
+            "rating": rating,
+            "note": note or "",
+            "reply": (reply_text or "")[:500],
+            "chat_id": chat_id or "",
+            "session_id": chat.get("session_id", "") if chat else "",
+        }
+        try:
+            import json as _json
+
+            fb_path = self._app_dir() / "feedback.jsonl"
+            with fb_path.open("a", encoding="utf-8") as f:
+                f.write(_json.dumps(entry, ensure_ascii=False) + "\n")
+        except OSError as e:
+            return {"error": str(e)}
+        return {"ok": True}
+
+    # --- categories ----------------------------------------------------
+
+    def set_chat_category(self, chat_id: str, category: str) -> dict:
+        """Set (or clear with '') a chat's category label."""
+        path = self._chats_dir() / f"{self._safe_id(chat_id)}.json"
+        try:
+            doc = json.loads(path.read_text())
+        except (OSError, json.JSONDecodeError) as e:
+            return {"error": f"could not load chat: {e}"}
+        cat = str(category or "").strip()[:40]
+        doc["category"] = cat
+        try:
+            path.write_text(json.dumps(doc, ensure_ascii=False))
+        except OSError as e:
+            return {"error": str(e)}
+        return {"ok": True, "category": cat}
+
+    @staticmethod
+    def _cat_key(name: str) -> str:
+        return str(name or "").strip().casefold()
+
+    def rename_category(self, old: str, new: str) -> dict:
+        """Rename a category across every chat that carries it."""
+        new_disp = str(new or "").strip()[:40]
+        if not new_disp:
+            return {"error": "new category name is empty"}
+        old_key = self._cat_key(old)
+        if not old_key:
+            return {"error": "old category name is empty"}
+        moved = 0
+        for path in self._chats_dir().glob("*.json"):
+            try:
+                doc = json.loads(path.read_text())
+            except (OSError, json.JSONDecodeError):
+                continue
+            if self._cat_key(doc.get("category", "")) != old_key:
+                continue
+            doc["category"] = new_disp
+            try:
+                path.write_text(json.dumps(doc, ensure_ascii=False))
+                moved += 1
+            except OSError:
+                continue
+        return {"ok": True, "category": new_disp, "moved": moved}
+
+    def delete_category(self, name: str) -> dict:
+        """Remove a category: every chat that carried it becomes uncategorised."""
+        key = self._cat_key(name)
+        if not key:
+            return {"error": "category name is empty"}
+        cleared = 0
+        for path in self._chats_dir().glob("*.json"):
+            try:
+                doc = json.loads(path.read_text())
+            except (OSError, json.JSONDecodeError):
+                continue
+            if self._cat_key(doc.get("category", "")) != key:
+                continue
+            doc["category"] = ""
+            try:
+                path.write_text(json.dumps(doc, ensure_ascii=False))
+                cleared += 1
+            except OSError:
+                continue
+        return {"ok": True, "cleared": cleared}
+
+    # --- wallpaper ------------------------------------------------------
+
+    def pick_wallpaper(self) -> dict:
+        """Open a native file picker for images; persist and return as data URL."""
+        if self._window is None:
+            return {"error": "no window"}
+        try:
+            import webview
+
+            res = self._window.create_file_dialog(
+                webview.OPEN_DIALOG,
+                file_types=("Images (*.png;*.jpg;*.jpeg;*.webp;*.heic;*.gif)",),
+            )
+        except Exception as e:
+            return {"error": str(e)}
+        if not res:
+            return {}
+        path = str(res[0])
+        profile = _profile.get_profile()
+        profile.ui_wallpaper = path
+        return self.wallpaper_data_url(path)
+
+    def clear_wallpaper(self) -> dict:
+        """Remove the background image."""
+        profile = _profile.get_profile()
+        profile.ui_wallpaper = ""
+        return {"ok": True}
+
+    def wallpaper_data_url(self, path: str) -> dict:
+        """Return the image at path as a base64 data URL, downscaled to ≤1920px."""
+        import base64
+        import mimetypes
+        from pathlib import Path
+
+        p = Path(path or "")
+        if not p.is_file():
+            return {"ok": False}
+        mime, _ = mimetypes.guess_type(str(p))
+        if not mime or not mime.startswith("image/"):
+            return {"ok": False}
+        try:
+            import subprocess
+            import tempfile
+
+            suffix = p.suffix or ".jpg"
+            with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:
+                tmp_path = tmp.name
+            subprocess.run(
+                ["sips", "-Z", "1920", str(p), "--out", tmp_path],
+                capture_output=True,
+                timeout=10,
+                check=True,
+            )
+            data = Path(tmp_path).read_bytes()
+            import os
+
+            os.unlink(tmp_path)
+        except Exception:
+            data = p.read_bytes()
+        b64 = base64.b64encode(data).decode("ascii")
+        return {"ok": True, "path": str(p), "dataUrl": f"data:{mime};base64,{b64}"}
+
     # --- dictation (macOS-only, optional) --------------------------------
 
     def start_dictation(self) -> bool:
-        return False
+        """Begin voice-to-text; transcript streams as dictation events."""
+        from pennyworth.app.dictation import Dictation
+
+        if not hasattr(self, "_dictation"):
+            self._dictation = Dictation()
+
+        def on_text(text: str) -> None:
+            self._emit({"type": "dictation", "text": text})
+
+        def on_state(state: str) -> None:
+            self._emit({"type": "dictation_state", "state": state})
+
+        return self._dictation.start(on_text, on_state)
 
     def stop_dictation(self) -> bool:
-        return False
+        d = getattr(self, "_dictation", None)
+        if d:
+            d.stop(lambda s: self._emit({"type": "dictation_state", "state": s}))
+        return True
 
 
 def _humanize_reset(iso: str) -> str:
