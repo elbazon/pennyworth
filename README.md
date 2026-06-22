@@ -146,7 +146,8 @@ Good first steps: try the app, file what feels rough, or pick up a roadmap item.
 
 ## License & credits
 
-**Created by Haim Elbaz**, with development assistance from Claude (Anthropic).
+**Created by Haim Elbaz**, with contributions from the **Morning R&D team** and
+development assistance from Claude (Anthropic).
 
 Licensed under the **[Apache License 2.0](LICENSE)** — free to use, modify, and
 redistribute, including commercially, provided you keep the copyright notice and the
