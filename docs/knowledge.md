@@ -1,6 +1,6 @@
-# Teach Alfred your domain — the Knowledge panel
+# Teach Pennyworth your domain — the Knowledge panel
 
-Out of the box, Alfred is a sharp generalist engineer. The **Knowledge** panel
+Out of the box, Pennyworth is a sharp generalist engineer. The **Knowledge** panel
 makes him fluent in *your* world — your glossary, conventions, architecture,
 gotchas — with no code change and no pack. Every enabled entry is injected into
 his system prompt at the start of **each turn**, so he reasons with your context
@@ -33,7 +33,7 @@ machine except as part of the prompt you send to your own agent.
 | **Linked file** | *Link a file…* | a path reference | **re-read live every turn** |
 
 Use a **linked file** for knowledge that lives in a doc you already maintain
-(an architecture note, a glossary, a `CONVENTIONS.md`) — edit the file and Alfred
+(an architecture note, a glossary, a `CONVENTIONS.md`) — edit the file and Pennyworth
 picks up the change on the next message, no re-import.
 
 ## Managing entries
@@ -62,8 +62,8 @@ Each entry card offers:
 ## Tips
 
 - Knowledge is **global**, applied to every chat and every repository — it's
-  *who Alfred is for you*, not per-project. (Per-repo specifics belong in that
-  repo's own docs, which Alfred reads when working there.)
+  *who Pennyworth is for you*, not per-project. (Per-repo specifics belong in that
+  repo's own docs, which Pennyworth reads when working there.)
 - Big knowledge costs context. Disable entries you don't currently need.
 - For a whole platform — repositories, team, CI, MCP tools, *and* skills — graduate
   from loose knowledge to a **[pack](../README.md#build-a-pack)**.

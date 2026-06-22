@@ -6,21 +6,29 @@ All notable changes to Pennyworth are recorded here. The format follows
 
 ## [0.1.0] — first public release
 
-The first open-source release of Pennyworth — the clean, platform-agnostic core
-of **Alfred**, a dignified butler-engineer AI companion.
+The first open-source release of Pennyworth — a dignified, platform-agnostic
+butler-engineer AI companion, modeled on Alfred Pennyworth.
 
 ### Added
 
-- **Alfred persona + runtime** — the CLI (`alfred run` / `alfred chat` /
-  `alfred prompt`) and a per-user profile (name + how Alfred addresses you).
-- **Desktop app** (`alfred app`) — a native window with:
-  - streaming chat, with visible extended **thinking** and a reasoning drawer;
+- **Pennyworth persona + runtime** — the CLI (`pennyworth run` / `pennyworth chat` /
+  `pennyworth prompt`, with `alfred` kept as an alias) and a per-user profile
+  (name + how Pennyworth addresses you).
+- **Desktop app** (`pennyworth app`) — a native window with:
+  - streaming chat, with visible extended **thinking**, a reasoning drawer, and
+    rotating butler loading phrases while a turn runs;
   - an embedded **terminal**, per-chat **model / persona / effort**, and a
     working-directory picker;
+  - inline **image thumbnails** for attached/pasted images and per-reply
+    **thumbs feedback**;
+  - a **resizable sidebar** with **chat categories** and **cross-chat search**;
   - the **Knowledge** panel — domain notes injected into the prompt every turn
     (inline, imported, or live-linked files);
-  - a repo-focused **Batcave**, **Usage** (Claude quotas), custom **themes**,
-    **scheduled** prompts, saved chats, and **Settings**.
+  - a repo-focused **Batcave**, **Usage** (Claude quotas), custom **themes** and
+    a chat **wallpaper**, macOS **dictation**, **scheduled** prompts, saved
+    chats, and **Settings**;
+  - first-launch auto-install of **Pennyworth.app** into `~/Applications`
+    (`pennyworth app --install-shortcut` / `--uninstall`).
 - **Packs** — everything platform-specific (identity, principal, attribution,
   skills, team, repositories, MCP "hands", CI) attaches through a pack and only a
   pack. The brain is clean by construction, enforced by a test.

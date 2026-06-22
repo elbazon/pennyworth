@@ -29,5 +29,5 @@ Once dropped in, the `📸` placeholders in [the app tour](desktop-app.md) and
 lines with a normal image embed:
 
 ```markdown
-![Alfred — chat in progress](images/app-overview.png)
+![Pennyworth — chat in progress](images/app-overview.png)
 ```

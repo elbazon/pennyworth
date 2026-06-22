@@ -5,7 +5,7 @@ This is the maintainer guide for cutting a release. Pennyworth ships to
 
 ```bash
 pipx install 'pennyworth[app]'
-alfred app
+pennyworth app
 ```
 
 The release chain is **tag-driven and automated** — pushing a `vX.Y.Z` tag builds,

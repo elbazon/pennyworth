@@ -7,8 +7,9 @@ and CI — is built and gated by the clean-brain test._
 
 ## 1. Philosophy
 
-Pennyworth is a butler-engineer AI companion. The **persona is Alfred**; the **project is
-Pennyworth**. The guiding rule is a hard separation:
+Pennyworth is a butler-engineer AI companion — the assistant, the project, and the
+package all carry the name, after the gentleman's butler **Alfred Pennyworth**. The
+guiding rule is a hard separation:
 
 - The **core** is the butler — platform-agnostic. It knows *how* to serve, not *whom*.
 - A **pack** is the household — everything specific to one platform. It teaches the butler
@@ -21,7 +22,7 @@ experience.
 ## 2. Two layers
 
 ### Core (this repo)
-- **Persona & prompt assembly** — the Alfred character, the operating priorities, the rules
+- **Persona & prompt assembly** — the Pennyworth character, the operating priorities, the rules
   scaffold, output formatting, execution modes, and persona overlays.
 - **Agent runner** — drives the underlying coding agent.
 - **Surfaces** — CLI, TUI, and chat.
@@ -62,7 +63,7 @@ Implemented seams a pack can declare today:
 - **Hands (MCP)** — the `[[hands]]` array of MCP tool servers the assistant operates the platform
   through. This is the boundary the core talks across, so **the core never imports platform
   tooling** — the load-bearing seam the two-layer design is named for. Two halves, both shipped:
-    - *Index* (`name`, `summary`) — rendered into the brain so Alfred knows which servers exist
+    - *Index* (`name`, `summary`) — rendered into the brain so Pennyworth knows which servers exist
       and when to reach for each.
     - *Transport* (stdio `command`/`args`, or remote `url`/`transport`) — when present, the
       runner wires the server **live** into a Claude-protocol host agent via `--mcp-config`, so
@@ -72,7 +73,7 @@ Implemented seams a pack can declare today:
 - **CI** — the `[ci]` table (`provider`, `host`) names which CI/CD provider runs the platform's
   builds and where, rendered as a short orienting section for build/deploy diagnosis. Only the
   orienting fact lives here; the *how-to* (build ids, recipes) belongs in a skill and the *tools*
-  to query CI in a hand — this section points Alfred at both.
+  to query CI in a hand — this section points Pennyworth at both.
 
 Every seam in the first-cut contract is now implemented. Future growth (pack versioning, richer
 manifest fields) follows the same rule: empty default in the core, real value in the pack, gated
@@ -81,9 +82,9 @@ by the clean-brain test.
 ## 3. Attach / detach
 
 ```
-alfred pack attach <path|git-url>   # install into the local pack store, mark active
-alfred pack detach <name>
-alfred pack list
+pennyworth pack attach <path|git-url>   # install into the local pack store, mark active
+pennyworth pack detach <name>
+pennyworth pack list
 ```
 
 Packs live in a per-user pack store; the active pack is recorded in the user profile. Two
@@ -118,12 +119,12 @@ Done in v0.1.0:
 - ✅ Seams: persona binding, principal, skills, team, repositories, attribution/identity, CI.
 - ✅ A reference pack (`examples/acme`) demonstrating the contract end to end.
 - ✅ The agent runner (drives the host coding agent) + CLI (`run` / `chat`).
-- ✅ A clean, unbranded desktop app (`alfred app`): streaming token output,
+- ✅ A clean, unbranded desktop app (`pennyworth app`): streaming token output,
   markdown + code-copy rendering, a per-reply reasoning drawer (thinking + tool
   activity) and cost, persisted multi-chat (restore/rename/delete), and Skills /
   Settings / About panels.
 - ✅ Per-user profile (name + form of address) so the no-pack butler addresses
-  you correctly — host config under `PENNYWORTH_HOME`, not a pack (`alfred profile`).
+  you correctly — host config under `PENNYWORTH_HOME`, not a pack (`pennyworth profile`).
 - ✅ CI: ruff + the test suite on every push/PR across Python 3.11–3.13.
 - ✅ The **Hands (MCP)** seam, both halves: a pack's `[[hands]]` index reaches the
   brain (gated by the clean-brain test), and *wireable* hands (stdio `command`/`args`

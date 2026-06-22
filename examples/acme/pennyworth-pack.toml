@@ -1,6 +1,6 @@
 # An example pack. Attach it to see the generic butler become a platform expert:
-#   alfred pack attach examples/acme
-#   alfred prompt
+#   pennyworth pack attach examples/acme
+#   pennyworth prompt
 [pack]
 name = "acme"
 platform_name = "the Acme platform"
@@ -24,8 +24,8 @@ name = "acme-web"
 path = "~/code/acme-web"
 description = "The React front-end."
 
-# Hands (MCP): the tool servers Alfred operates the platform through. The index
-# (name + summary) tells Alfred when to reach for each; the transport fields make
+# Hands (MCP): the tool servers Pennyworth operates the platform through. The index
+# (name + summary) tells Pennyworth when to reach for each; the transport fields make
 # the server live — the runner wires them into a Claude-protocol host agent via
 # --mcp-config. Secrets are NOT declared here: the server inherits the host
 # process environment, so tokens (e.g. GITHUB_TOKEN) live in your shell env.
@@ -44,7 +44,7 @@ summary = "The Acme platform's own MCP tools — deploys, feature flags, service
 url = "https://mcp.acme.example/sse"
 transport = "sse"
 
-# A brain-only hand is still valid: name + summary, no transport. Alfred knows it
+# A brain-only hand is still valid: name + summary, no transport. Pennyworth knows it
 # exists and when to use it, but the runner does not auto-wire it.
 [[hands]]
 name = "postgres"

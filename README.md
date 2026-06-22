@@ -4,21 +4,22 @@
 &nbsp;[![License: Apache-2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 &nbsp;[![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/)
 
-> **Alfred** — a dignified butler-engineer for your codebase. He reads, writes, and
+> **Pennyworth** — a dignified butler-engineer for your codebase. He reads, writes, and
 > reviews code, navigates architecture, runs your terminal, and learns your domain —
 > in the unflappable voice of a proper manservant.
 
-![Alfred — the open-source desktop app](docs/images/app-overview.png)
+![Pennyworth — the open-source desktop app](docs/images/app-overview.png)
 
-**Pennyworth** is the open-source project and Python package; **Alfred** is the app
-you run (the `alfred` command). You install Pennyworth — and you talk to Alfred.
+**Pennyworth** is the open-source project, the Python package, and the assistant you
+talk to — modeled on Alfred Pennyworth, the gentleman's butler. You install the
+package and run the `pennyworth` command (`alfred` still works as an alias).
 
-Under the hood, Alfred drives a host coding agent (the
+Under the hood, Pennyworth drives a host coding agent (the
 [Claude Code](https://claude.com/claude-code) CLI by default) with a carefully
 assembled system prompt — his "brain". Your code, chats, and knowledge stay on your
 machine.
 
-## Why Alfred
+## Why Pennyworth
 
 - 🗣️ **A plain-language pair.** Ask in English — he explains, writes, reviews, and
   fixes across your repositories, streaming his reasoning as he goes.
@@ -40,27 +41,27 @@ You need **Python 3.11+** and the **Claude CLI signed in** (`claude auth login`)
 The desktop app is **macOS**; the command line runs anywhere.
 
 ```bash
-pipx install 'pennyworth[app]'     # install Alfred, with the desktop app
-alfred app                         # launch the app
+pipx install 'pennyworth[app]'     # install Pennyworth, with the desktop app
+pennyworth app                     # launch the app
 ```
 
 A window opens to the welcome screen — type a request like *"explain this codebase"*
-or *"review my changes"*, and Alfred replies. New here?
+or *"review my changes"*, and Pennyworth replies. New here?
 → **[Getting started](docs/getting-started.md)**.
 
 **Prefer the terminal?** The command line ships in the same package:
 
 ```bash
-alfred "explain this repo"     # one-shot, answered as Alfred
-alfred chat                    # interactive session
+pennyworth "explain this repo"     # one-shot, answered in character
+pennyworth chat                    # interactive session
 ```
 
 ## Documentation
 
 - **[Getting started](docs/getting-started.md)** — prerequisites, install, first run.
 - **[Desktop app tour](docs/desktop-app.md)** — every panel, the terminal, models, themes.
-- **[Teach Alfred your domain](docs/knowledge.md)** — the Knowledge panel.
-- **[Build a pack](#build-a-pack)** — make Alfred fluent in your whole platform.
+- **[Teach Pennyworth your domain](docs/knowledge.md)** — the Knowledge panel.
+- **[Build a pack](#build-a-pack)** — make Pennyworth fluent in your whole platform.
 - **[Architecture](docs/architecture.md)** — how the brain is assembled, and the one rule.
 - **[Contributing](CONTRIBUTING.md)** — how to help.
 
@@ -74,7 +75,7 @@ be open while a company's specifics stay in a private pack.
 
 ## Build a pack
 
-A pack teaches Alfred a whole platform — its identity, repositories, team, CI, and
+A pack teaches Pennyworth a whole platform — its identity, repositories, team, CI, and
 tools. It's a directory with a manifest; see [`examples/acme`](examples/acme) for a
 complete one.
 
@@ -94,7 +95,7 @@ name = "acme-api"
 path = "~/code/acme-api"
 description = "The REST API service."
 
-[[hands]]                  # an MCP tool server Alfred operates the platform through
+[[hands]]                  # an MCP tool server Pennyworth operates the platform through
 name = "github"
 summary = "Pull requests, issues, and CI status."
 command = "npx"
@@ -104,9 +105,9 @@ args = ["-y", "@modelcontextprotocol/server-github"]
 Attach it from the CLI, and detach to return to the generic butler:
 
 ```bash
-alfred pack attach ./my-pack
-alfred pack list
-alfred pack detach
+pennyworth pack attach ./my-pack
+pennyworth pack list
+pennyworth pack detach
 ```
 
 Each piece fills a *seam* in the brain — persona, principal, attribution, skills,
@@ -118,7 +119,7 @@ A pack may be private: **open-source core, closed-source pack** is a supported s
 - **Core (this repo)** — the persona, the prompt assembly, the pack loader, the
   agent runner, and the surfaces (desktop app + CLI). Platform-agnostic; depends on
   no pack.
-- **Packs** — what teach Alfred a specific platform.
+- **Packs** — what teach Pennyworth a specific platform.
 
 See [`docs/architecture.md`](docs/architecture.md) for the design.
 
@@ -152,7 +153,7 @@ redistribute, including commercially, provided you keep the copyright notice and
 [`NOTICE`](NOTICE) attribution. The names "Pennyworth" and "Alfred" and the branding
 are reserved — see **[TRADEMARK.md](TRADEMARK.md)**.
 
-Alfred is written in admiration of the classic gentleman's-butler tradition.
+Pennyworth is written in admiration of the classic gentleman's-butler tradition.
 "Batman", "Alfred Pennyworth", and "Batcave" are trademarks of DC Comics /
 Warner Bros., referenced here purely as an affectionate homage — this project is
 independent and not affiliated with or endorsed by them. See **[TRADEMARK.md](TRADEMARK.md)**.

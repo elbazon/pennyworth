@@ -1,8 +1,8 @@
 # Contributing to Pennyworth
 
-Thank you for lending a hand. Pennyworth is the open-source core of **Alfred**, a
-butler-engineer AI companion. This guide covers how to set up, what the project
-holds sacred, and how to get a change merged.
+Thank you for lending a hand. Pennyworth is a butler-engineer AI companion —
+modeled on Alfred Pennyworth, the gentleman's butler. This guide covers how to set
+up, what the project holds sacred, and how to get a change merged.
 
 ## The one rule
 
@@ -24,7 +24,7 @@ Pennyworth uses [Poetry](https://python-poetry.org/) and targets Python 3.11–3
 
 ```bash
 poetry install --extras app     # core + the desktop app (pywebview)
-poetry run alfred --version
+poetry run pennyworth --version
 ```
 
 The agent runner shells out to `claude` by default; install the
