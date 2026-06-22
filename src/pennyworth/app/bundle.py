@@ -108,19 +108,36 @@ def _build_icns(png: Path, dest: Path) -> bool:
             iconset.mkdir()
             for size in (16, 32, 128, 256, 512):
                 subprocess.run(
-                    ["sips", "-z", str(size), str(size), str(png),
-                     "--out", str(iconset / f"icon_{size}x{size}.png")],
-                    check=True, capture_output=True,
+                    [
+                        "sips",
+                        "-z",
+                        str(size),
+                        str(size),
+                        str(png),
+                        "--out",
+                        str(iconset / f"icon_{size}x{size}.png"),
+                    ],
+                    check=True,
+                    capture_output=True,
                 )
             for label, px in ((16, 32), (32, 64), (128, 256), (256, 512)):
                 subprocess.run(
-                    ["sips", "-z", str(px), str(px), str(png),
-                     "--out", str(iconset / f"icon_{label}x{label}@2x.png")],
-                    check=True, capture_output=True,
+                    [
+                        "sips",
+                        "-z",
+                        str(px),
+                        str(px),
+                        str(png),
+                        "--out",
+                        str(iconset / f"icon_{label}x{label}@2x.png"),
+                    ],
+                    check=True,
+                    capture_output=True,
                 )
             subprocess.run(
                 ["iconutil", "-c", "icns", str(iconset), "-o", str(dest)],
-                check=True, capture_output=True,
+                check=True,
+                capture_output=True,
             )
         return True
     except (subprocess.CalledProcessError, FileNotFoundError):
@@ -188,9 +205,16 @@ def _dock_app(app_path: Path) -> None:
     )
     try:
         subprocess.run(
-            ["defaults", "write", "com.apple.dock", "persistent-apps",
-             "-array-add", tile],
-            check=True, capture_output=True,
+            [
+                "defaults",
+                "write",
+                "com.apple.dock",
+                "persistent-apps",
+                "-array-add",
+                tile,
+            ],
+            check=True,
+            capture_output=True,
         )
         subprocess.run(["killall", "Dock"], check=True, capture_output=True)
     except (subprocess.CalledProcessError, FileNotFoundError):

@@ -155,6 +155,7 @@ def _ensure_shortcut() -> None:
         return
     try:
         from pennyworth.app.bundle import install_app_bundle
+
         install_app_bundle()
     except Exception:
         pass
