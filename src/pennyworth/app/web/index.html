@@ -5,7 +5,7 @@
 <title>Pennyworth</title>
 <link rel="stylesheet" href="xterm.css" />
 <style>
-  /* Claude-Desktop-inspired multi-chat shell. Alfred's identity green —
+  /* Claude-Desktop-inspired multi-chat shell. Pennyworth's identity green —
      Ultron bleeds it red. Type is the system UI stack (no bundled fonts, so
      the open-source build ships clean of any proprietary typeface). */
 
@@ -381,7 +381,7 @@
   main#chat::-webkit-scrollbar-track, .panel::-webkit-scrollbar-track {
     background: var(--bg-side); border-radius: 999px; }
 
-  /* Completion milestone — a "✅ step done" line in Alfred's prose. */
+  /* Completion milestone — a "✅ step done" line in Pennyworth's prose. */
   .milestone { display: flex; align-items: center; gap: 9px;
     margin: 12px 0; padding: 9px 13px; border-radius: 9px;
     background: var(--accent-soft); border: 1px solid var(--accent);
@@ -483,7 +483,7 @@
   .turnmeta .sessid { font-family: ui-monospace, Menlo, monospace;
     cursor: pointer; opacity: .85; }
   .turnmeta .sessid:hover { color: var(--accent); opacity: 1; }
-  /* Reply time — the first field in Alfred's meta row (model · cost · session). */
+  /* Reply time — the first field in Pennyworth's meta row (model · cost · session). */
   .turnmeta .ts { opacity: .9; }
 
   /* Per-reply feedback — a quiet thumbs-up / thumbs-down on the meta row that
@@ -513,14 +513,14 @@
   /* Section headings carry the persona accent so a long reply reads as
      colour-separated blocks rather than one flat column — the heading is the
      eye's anchor when scanning back through a multi-part answer.
-     h1 is intentionally excluded: Alfred's prose only uses ## / ### and h1
+     h1 is intentionally excluded: Pennyworth's prose only uses ## / ### and h1
      would be heavy-handed in a reply; only the accent-tinted h2/h3 matter. */
   .body h1, .body h2, .body h3 { font-family: var(--serif);
     margin: 14px 0 6px; font-weight: 600; }
   .body h2, .body h3 { color: var(--accent); }
   .body h1 { font-size: 1.25em; } .body h2 { font-size: 1.15em; }
   .body h3 { font-size: 1.05em; }
-  /* Paragraph rhythm: a clear gap between thoughts (Alfred writes in short,
+  /* Paragraph rhythm: a clear gap between thoughts (Pennyworth writes in short,
      blank-line-separated paragraphs), distinctly larger than the line spacing
      within a paragraph so breaks read as breaks. Bottom-only margins keep the
      spacing even — adjacent paragraphs don't collapse to a thinner gap. */
@@ -1138,7 +1138,7 @@
   <aside>
     <div class="brand">
       <img class="alfred" src="logo.png" alt="" />
-      <div><b id="brandName">Alfred</b><span id="brandSub">at your service</span></div>
+      <div><b id="brandName">Pennyworth</b><span id="brandSub">at your service</span></div>
     </div>
     <button class="newchat" id="newChatBtn">＋&nbsp; New chat</button>
     <div class="sidescroll">
@@ -1147,14 +1147,14 @@
     </div>
     <nav>
       <button id="navBatcave" title="Your configured repositories at a glance — each one's branch and uncommitted changes"><span>🦇</span>Batcave</button>
-      <button id="navSkills" title="Alfred's platform knowledge — skills that load automatically by topic"><span>⚡</span>Skills</button>
-      <button id="navKnowledge" title="Your domain knowledge — injected into Alfred's prompt every turn"><span>📚</span>Knowledge</button>
-      <button id="navMcp" title="MCP connectors that give Alfred new hands — GitHub, Jira, AWS docs, Sentry, claude.ai"><span>🔌</span>Connectors</button>
+      <button id="navSkills" title="Pennyworth's platform knowledge — skills that load automatically by topic"><span>⚡</span>Skills</button>
+      <button id="navKnowledge" title="Your domain knowledge — injected into Pennyworth's prompt every turn"><span>📚</span>Knowledge</button>
+      <button id="navMcp" title="MCP connectors that give Pennyworth new hands — GitHub, Jira, AWS docs, Sentry, claude.ai"><span>🔌</span>Connectors</button>
       <button id="navUsage" title="Usage — your Claude subscription quotas"><span>📊</span>Usage<span class="usagepill" id="usagePill" hidden></span></button>
-      <button id="navStats" title="Your Alfred + Claude activity, mined locally from session history" style="display:none"><span>📈</span>Stats</button>
-      <button id="navSched" title="Scheduled prompts — Alfred runs them at a chosen time while the app is open"><span>⏰</span>Scheduled</button>
+      <button id="navStats" title="Your Pennyworth + Claude activity, mined locally from session history" style="display:none"><span>📈</span>Stats</button>
+      <button id="navSched" title="Scheduled prompts — Pennyworth runs them at a chosen time while the app is open"><span>⏰</span>Scheduled</button>
       <button id="navSettings" title="Profile, appearance &amp; theme, repository paths"><span>⚙️</span>Settings</button>
-      <button id="navAbout" title="About Alfred — version and credits"><span>ℹ️</span>About</button>
+      <button id="navAbout" title="About Pennyworth — version and credits"><span>ℹ️</span>About</button>
     </nav>
     <div class="brandfoot">
       <span id="brandLink" title="Pennyworth on GitHub" style="cursor:pointer;font-weight:600;letter-spacing:.04em;color:var(--text-dim)">Pennyworth</span>
@@ -1182,11 +1182,11 @@
         </div>
         <div class="focusbar" id="focusBar">
           <button class="focusbtn" id="focusBtn"
-            title="Surfaces at a task boundary with stale context behind it (or, as a backstop, when the window is nearly full). Alfred writes a brief handoff file, opens a fresh chat, and reads it back — so the next task starts on a clean, cheap context instead of paying to carry finished work.">🎯 Focus — hand off to a fresh chat before the next task</button>
+            title="Surfaces at a task boundary with stale context behind it (or, as a backstop, when the window is nearly full). Pennyworth writes a brief handoff file, opens a fresh chat, and reads it back — so the next task starts on a clean, cheap context instead of paying to carry finished work.">🎯 Focus — hand off to a fresh chat before the next task</button>
         </div>
         <div class="focusbar spinoffbar" id="spinoffBar">
           <button class="focusbtn spinoffbtn" id="spinoffBtn"
-            title="Alfred noticed a new, separable thread opening in this chat. Spin it into its own chat: he writes a short handoff for that thread, opens a fresh chat, and starts it there — keeping this conversation's context clean.">🔀 Spin this into its own chat</button>
+            title="Pennyworth noticed a new, separable thread opening in this chat. Spin it into its own chat: he writes a short handoff for that thread, opens a fresh chat, and starts it there — keeping this conversation's context clean.">🔀 Spin this into its own chat</button>
         </div>
         <div class="attachrow" id="attachRow"></div>
         <!-- Embedded terminal: a real PTY shell, one per chat, that continues
@@ -1207,7 +1207,7 @@
         <div class="composer">
           <div class="composer-input">
             <button class="iconbtn" id="attachBtn" title="Attach files">＋</button>
-            <textarea id="input" rows="1" placeholder="Type / for commands — or ask Alfred anything…"></textarea>
+            <textarea id="input" rows="1" placeholder="Type / for commands — or ask Pennyworth anything…"></textarea>
             <button class="iconbtn" id="micBtn" title="Dictate">🎙</button>
             <button class="send" id="sendBtn" title="Send">↑</button>
           </div>
@@ -1259,20 +1259,20 @@
     <section class="view" id="viewSkills">
       <div class="panel"><div class="col">
         <h2>Skills</h2>
-        <div class="sub">Alfred's platform knowledge — each loads automatically
+        <div class="sub">Pennyworth's platform knowledge — each loads automatically
           when a request touches its territory.</div>
         <div class="actions"><button class="btn" id="newSkillBtn">＋ New skill</button></div>
         <div id="skillForm" hidden class="card">
-          <div class="nm">Teach Alfred something new</div>
-          <div class="ds">Describe the knowledge; Alfred writes the skill himself
+          <div class="nm">Teach Pennyworth something new</div>
+          <div class="ds">Describe the knowledge; Pennyworth writes the skill himself
             and opens a draft PR.</div>
           <div class="formgrid">
             <label>Name</label><input id="skillName" placeholder="e.g. billing runbook" />
             <label>It covers</label><textarea id="skillDesc" rows="3"
-              placeholder="What should Alfred know, and when should it load?"></textarea>
+              placeholder="What should Pennyworth know, and when should it load?"></textarea>
           </div>
           <div class="actions">
-            <button class="btn" id="skillCreate">Ask Alfred to create it</button>
+            <button class="btn" id="skillCreate">Ask Pennyworth to create it</button>
             <button class="btn secondary" id="skillCancel">Cancel</button>
           </div>
         </div>
@@ -1284,7 +1284,7 @@
     <section class="view" id="viewKnowledge">
       <div class="panel"><div class="col">
         <h2>📚 Knowledge</h2>
-        <div class="sub">Teach this Alfred about your domain. Every enabled entry
+        <div class="sub">Teach this Pennyworth about your domain. Every enabled entry
           is injected into his prompt at the start of each turn — so he speaks
           your platform's language without a code change. Inline notes are stored
           locally; file-linked entries are re-read live each turn.</div>
@@ -1298,7 +1298,7 @@
           <div class="formgrid">
             <label>Title</label><input id="knowTitle" placeholder="e.g. Our billing domain" />
             <label>Knowledge</label><textarea id="knowBody" rows="8"
-              placeholder="Anything Alfred should treat as authoritative: glossary, conventions, architecture, do's and don'ts…"></textarea>
+              placeholder="Anything Pennyworth should treat as authoritative: glossary, conventions, architecture, do's and don'ts…"></textarea>
           </div>
           <div class="localactions">
             <button class="btn" id="knowSave">Save</button>
@@ -1313,7 +1313,7 @@
     <section class="view" id="viewMcp">
       <div class="panel"><div class="col">
         <h2>Connectors</h2>
-        <div class="sub">MCP servers give Alfred new hands — GitHub, Jira, AWS docs,
+        <div class="sub">MCP servers give Pennyworth new hands — GitHub, Jira, AWS docs,
           or anything custom. Managed here, used everywhere.</div>
         <div class="actions">
           <button class="btn" id="addMcpBtn">＋ Add connector</button>
@@ -1358,7 +1358,7 @@
     <section class="view" id="viewStats">
       <div class="panel"><div class="col">
         <h2>Stats</h2>
-        <div class="sub">Your Alfred + Claude activity, mined locally from session history.</div>
+        <div class="sub">Your Pennyworth + Claude activity, mined locally from session history.</div>
         <div id="statsBody"><div class="sub">Crunching history…</div></div>
       </div></div>
     </section>
@@ -1367,7 +1367,7 @@
     <section class="view" id="viewSched">
       <div class="panel"><div class="col">
         <h2>Scheduled tasks</h2>
-        <div class="sub">Alfred runs the prompt at the chosen time (while the app is
+        <div class="sub">Pennyworth runs the prompt at the chosen time (while the app is
           open — anything missed fires on next launch, marked late).</div>
         <div class="card">
           <div class="formgrid">
@@ -1390,22 +1390,22 @@
     <section class="view" id="viewSettings">
       <div class="panel"><div class="col">
         <h2>Settings</h2>
-        <div class="sub" id="settingsSub">Your Alfred profile.</div>
+        <div class="sub" id="settingsSub">Your Pennyworth profile.</div>
         <div class="card" id="settingsCard"></div>
 
         <h2 style="margin-top:28px">AI provider</h2>
         <div class="sub">Which model answers. <b>Claude Code</b> (default) keeps
-          Alfred's full powers — editing files, running tools, the terminal.
+          Pennyworth's full powers — editing files, running tools, the terminal.
           <b>OpenAI</b> or any <b>OpenAI-compatible</b> endpoint (OpenAI, Ollama,
-          vLLM, LM Studio) gives a conversational Alfred: he streams replies but
+          vLLM, LM Studio) gives a conversational Pennyworth: he streams replies but
           won't edit files or run tools. Your API key is stored locally and never
           shown again.</div>
         <div class="card" id="providerCard"></div>
 
         <h2 style="margin-top:28px">Repositories</h2>
-        <div class="sub">Where your local repositories live. Alfred reads and
+        <div class="sub">Where your local repositories live. Pennyworth reads and
           writes code in them, and they show up in the Batcave. Each is handed
-          to Alfred as a working directory so he can operate in it directly.</div>
+          to Pennyworth as a working directory so he can operate in it directly.</div>
         <div id="dirWarn" class="warnbox" hidden></div>
         <div class="card" id="dirCard"></div>
       </div></div>
@@ -1414,19 +1414,19 @@
     <!-- ABOUT -->
     <section class="view" id="viewAbout">
       <div class="panel"><div class="col">
-        <h2>About Alfred</h2>
+        <h2>About Pennyworth</h2>
         <div class="sub">Your dignified engineering companion.</div>
 
         <div class="card">
-          <div class="nm">🎩 Alfred <span id="aboutVersion" class="ds" style="font-weight:400"></span></div>
-          <div class="ds">Alfred is an AI engineering companion modelled after Alfred
+          <div class="nm">🎩 Pennyworth <span id="aboutVersion" class="ds" style="font-weight:400"></span></div>
+          <div class="ds">Pennyworth is an AI engineering companion modelled after Alfred
             Pennyworth — proper, precise, and quietly capable. He works beside you
             across your whole codebase: tending the local environment, reading and
             writing code, and keeping the workflow gliding. Calm when things break,
             dry of wit, and never sycophantic.</div>
         </div>
 
-        <h2 style="margin-top:28px">What Alfred can do</h2>
+        <h2 style="margin-top:28px">What Pennyworth can do</h2>
         <div class="card">
           <div class="ds" style="line-height:1.9">
             🧰 &nbsp;<b>Environment</b> — bring up and tend local stacks, services, databases, and infra.<br>
@@ -1441,7 +1441,7 @@
         <h2 style="margin-top:28px">Credits</h2>
         <div class="card">
           <div class="nm">Created by Haim Elbaz</div>
-          <div class="ds">Pennyworth — the open-source Alfred core</div>
+          <div class="ds">Pennyworth — the open-source butler-engineer core</div>
         </div>
         <div class="sub" style="margin-top:8px">Open source · Apache-2.0</div>
 
@@ -1581,7 +1581,7 @@
     sc.scrollTo({ top: sc.scrollHeight, behavior: "smooth" });
   });
 
-  // Code-block buttons (copy / collapse). Delegated on #chat because each Alfred
+  // Code-block buttons (copy / collapse). Delegated on #chat because each Pennyworth
   // bubble rebuilds its innerHTML on every animation frame while streaming — any
   // listener bound to a button inside would be wiped on the next frame.
   chatScroll.addEventListener("click", (ev) => {
@@ -1604,7 +1604,7 @@
     }
   });
 
-  // Web links in rendered content (Alfred's markdown, tables, the reasoning
+  // Web links in rendered content (Pennyworth's markdown, tables, the reasoning
   // drawer) are real <a href> for appearance and hover — but in a WKWebView a
   // raw href click navigates the whole window to that URL with no browser chrome
   // to get back: it swallows the app entirely. Intercept every http(s) link
@@ -1752,7 +1752,7 @@
     // Each chat owns a pane in the 🧠 drawer (reasoning + work live there).
     const brainCol = el("div", "brainpane");
     brainCol.append(el("div", "brain-empty",
-      "Alfred's reasoning and tool use for this chat will appear here."));
+      "Pennyworth's reasoning and tool use for this chat will appear here."));
     $("brainBody").append(brainCol);
     const chat = { id, title: title || "New chat", pane, col, brainCol,
                    running: false, status: "", turn: null, cost: 0,
@@ -1787,7 +1787,7 @@
     badge.onclick = () => {
       // install_version closes the app and runs the multi-minute install in a
       // Terminal, then relaunches — so confirm before pulling the rug.
-      if (!confirm("Install " + v.latest + "? Alfred will close, update in "
+      if (!confirm("Install " + v.latest + "? Pennyworth will close, update in "
                    + "Terminal, then reopen on the new version.")) return;
       api().install_version(v.latest);
     };
@@ -1965,7 +1965,7 @@
     const chip = head.querySelector(".persona-chip");
     const label = personaChipText(chat.persona || "");
     chip.textContent = label;
-    chip.hidden = !label;   // no chip for the default (no-persona) Alfred
+    chip.hidden = !label;   // no chip for the default (no-persona) Pennyworth
   }
   // Mousedown on a pane header: focus the pane, and — if the pointer then drags
   // past a small threshold — reorder the panes (drop the dragged chat into the
@@ -2479,7 +2479,7 @@
 
   // ---- per-chat turn rendering ----
   //
-  // The MAIN chat shows only the conversation — your message and Alfred's text
+  // The MAIN chat shows only the conversation — your message and Pennyworth's text
   // answer (one bubble per turn). Reasoning and tool use go to the 🧠 drawer
   // (per-chat pane), grouped per turn in chronological order; thinking & work
   // stay collapsible <details>. `t.cur` is the open drawer segment.
@@ -2601,7 +2601,7 @@
     }
     return t.cur.body;
   }
-  // The single Alfred answer bubble in the main chat (one per turn).
+  // The single Pennyworth answer bubble in the main chat (one per turn).
   function turnBubble(chat) {
     const t = chatTurn(chat);
     if (!t.bubble) {
@@ -2919,7 +2919,7 @@
         // that never got a tool_done would otherwise count up forever.
         freezeChatTimers(chat.id);
         refreshUsage();   // a turn just spent quota — keep the Usage pill current
-        // Lift any spin-off marker Alfred emitted out of the reply text BEFORE it
+        // Lift any spin-off marker Pennyworth emitted out of the reply text BEFORE it
         // is persisted or re-read below — so the marker never lands in the stored
         // transcript and `chat.pendingSpinoff` is set for the bar. Done
         // synchronously, not via renderBubble's rAF, which may not fire before
@@ -3289,7 +3289,7 @@
       } else if (textOverride === undefined) {
         // User pressed Enter mid-turn. Leave the turn alone and the draft intact;
         // the status row is busy streaming, so a transient toast carries the hint.
-        toast("Alfred is still working — let the current prompt finish.");
+        toast("Pennyworth is still working — let the current prompt finish.");
       }
       // Programmatic sends (textOverride set) while running: silently skip rather
       // than fork or interrupt the live turn.
@@ -3667,7 +3667,7 @@
   // FOCUS exists to shed context that has stopped earning its keep — context you
   // keep paying to carry (a cache-read on every turn) and that dilutes the
   // model's attention, while contributing nothing to the task in front of you. On
-  // click Alfred writes a brief handoff file, opens a NEW chat, and reads it back
+  // click Pennyworth writes a brief handoff file, opens a NEW chat, and reads it back
   // — continuing on a clean, cheap context instead of the whole history.
   //
   // The trigger is a TASK BOUNDARY with meaningful context behind it — NOT raw
@@ -3753,8 +3753,8 @@
 
   // ---- spin-off suggestion ------------------------------------------------
   // The sibling of FOCUS. FOCUS sheds a FULL chat to continue the SAME task;
-  // spin-off splits a NEW thread Alfred noticed opening mid-chat into its own
-  // chat, leaving the current one clean. The signal is explicit: Alfred ends a
+  // spin-off splits a NEW thread Pennyworth noticed opening mid-chat into its own
+  // chat, leaving the current one clean. The signal is explicit: Pennyworth ends a
   // reply with a marker (taught in the prompt's Output Formatting block) when a
   // separable new feature/design thread appears. We lift the marker out of the
   // text (so it never shows or persists) and offer a one-click button that
@@ -4065,12 +4065,12 @@
     document.querySelector(".composer-zone") &&
       applyPersonaToEl(document.querySelector(".composer-zone"), persona);
     const flavor = PERSONA_FLAVOR[persona];
-    $("brandName").textContent = persona === "ultron" ? "ULTRON" : "Alfred";
+    $("brandName").textContent = persona === "ultron" ? "ULTRON" : "Pennyworth";
     $("brandSub").textContent = flavor ? flavor.sub : "at your service";
   }
   // The compact persona label for a chat's pane header — the persona's icon
   // (the leading glyph of its flavour band) plus a tidy name, e.g. "🏛️ Architect".
-  // Empty for the default (no-persona) Alfred.
+  // Empty for the default (no-persona) Pennyworth.
   function personaChipText(persona) {
     const f = PERSONA_FLAVOR[persona];
     if (!f) return "";
@@ -4525,7 +4525,7 @@
     $("knowBody").disabled = !!(entry && entry.path);
     $("knowBody").placeholder = (entry && entry.path)
       ? "(linked file — edit the file on disk; it's re-read live each turn)"
-      : "Anything Alfred should treat as authoritative…";
+      : "Anything Pennyworth should treat as authoritative…";
     $("knowForm").hidden = false;
     $("knowTitle").focus();
   }
@@ -4899,7 +4899,7 @@
 
   // ---- settings ----
   const SETTING_ROWS = [
-    ["name", "Name", "text", null, "how Alfred addresses you"],
+    ["name", "Name", "text", null, "how Pennyworth addresses you"],
     ["email", "Email", "text", null, "your git identity for attribution"],
     ["model", "Model", "select", ["auto", "haiku", "sonnet", "opus", "opus[1m]", "fable"],
       "auto routes each request to the cheapest capable model"],
@@ -4907,7 +4907,7 @@
     ["mode", "Execution mode", "select", ["auto", "plan"],
       "plan proposes changes as IDE diffs; auto applies directly"],
     ["show_thinking", "Show thinking", "toggle", null,
-      "stream Alfred's reasoning while he works"],
+      "stream Pennyworth's reasoning while he works"],
     ["caveman", "Caveman mode", "toggle", null,
       "trivial turns use a tiny prompt — saves tokens on small talk"],
     ["notify_on", "Notifications", "toggle", null,
@@ -4916,7 +4916,7 @@
   async function loadSettings() {
     if (!api()) return;
     const s = await api().get_settings();
-    $("settingsSub").textContent = s.email ? "Signed in as " + s.email : "Your Alfred profile.";
+    $("settingsSub").textContent = s.email ? "Signed in as " + s.email : "Your Pennyworth profile.";
     const card = $("settingsCard");
     card.innerHTML = "";
     for (const [key, label, kind, options, hint] of SETTING_ROWS) {
@@ -5123,7 +5123,7 @@
         s.provider_key_set ? "•••••••• (set — leave blank to keep)" : "paste your key",
         async (v) => { if (v) await api().set_provider_key(v); });
       card.append(el("div", "sub",
-        "Conversational mode: Alfred streams replies but won't edit files or run " +
+        "Conversational mode: Pennyworth streams replies but won't edit files or run " +
         "tools. Switch back to Claude Code for full agentic powers."));
     }
   }
@@ -5141,7 +5141,7 @@
       warn.append(el("div", "warntitle", "⚠ " + missing.length +
         " required path" + (missing.length > 1 ? "s" : "") + " not set"));
       warn.append(el("div", "warnbody",
-        "Without " + missing.join(", ") + ", Alfred can't work in your " +
+        "Without " + missing.join(", ") + ", Pennyworth can't work in your " +
         "repositories. Set " +
         (missing.length > 1 ? "them" : "it") + " below."));
     } else {
@@ -5174,12 +5174,12 @@
     }
 
     // Additional, user-added repos. Header row carries the "Add" button; each
-    // extra gets a Remove. These join Alfred's context like the fixed repos.
+    // extra gets a Remove. These join Pennyworth's context like the fixed repos.
     // Rows are {name, path, exists}; persistence goes via save_extra_repos([{name,path}]).
     const extras = (data && data.extras) || [];
     const head = el("div", "row");
     const headLab = el("label", "", "Additional repositories");
-    headLab.append(el("span", "hint", "extra folders Alfred can read & edit"));
+    headLab.append(el("span", "hint", "extra folders Pennyworth can read & edit"));
     head.append(headLab);
     const addBtn = el("button", "btn secondary", "Add repository…");
     addBtn.addEventListener("click", async () => {
@@ -5253,7 +5253,7 @@
   }
   async function installVersion(tag, isInstalled) {
     const verb = isInstalled ? "Reinstall" : "Install";
-    if (!confirm(verb + " v" + tag + "?\n\nAlfred will close, run the install in " +
+    if (!confirm(verb + " v" + tag + "?\n\nPennyworth will close, run the install in " +
         "Terminal, then reopen on this version.")) return;
     try {
       const res = await api().install_version(tag);

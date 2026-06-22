@@ -131,7 +131,7 @@ def _compose(messages: list[dict]) -> str:
         return latest
     lines = ["Conversation so far (oldest first):"]
     for message in prior:
-        who = "User" if message.get("role") == "user" else "Alfred"
+        who = "User" if message.get("role") == "user" else "Pennyworth"
         lines.append(f"{who}: {message.get('text', '')}")
     lines += ["", "Now respond, in character, to the user's latest message:", latest]
     return "\n".join(lines)
@@ -338,7 +338,7 @@ class Bridge:
         return {
             "version": _VERSION,
             "app": "Pennyworth",
-            "assistant": "Alfred",
+            "assistant": "Pennyworth",
             "pack": pack.name or None,
             "userName": name,
             "userFirstName": name.split()[0] if name else "",
