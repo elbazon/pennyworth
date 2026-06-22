@@ -56,7 +56,7 @@ echo "Bumping to $version ..."
 poetry version "$version" >/dev/null
 
 # Update __version__ in the package (portable in-place sed for macOS + Linux).
-python - "$version" <<'PY'
+python3 - "$version" <<'PY'
 import re, sys, pathlib
 version = sys.argv[1]
 path = pathlib.Path("src/pennyworth/__init__.py")
