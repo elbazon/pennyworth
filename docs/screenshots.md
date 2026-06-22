@@ -4,6 +4,11 @@ The docs reference images under `docs/images/`. These need to be captured from a
 running app on a real display (they can't be generated headlessly). Here's
 exactly what to grab — about five minutes of work.
 
+> ⚠️ The committed images are **stale** — captured before the Pennyworth rebrand,
+> so they show the old "Alfred" UI, and `app-overview.png` was shot with a private
+> platform pack attached (it leaks platform internals into the public repo).
+> Recapture all six with the guidance below.
+
 On macOS, **⌘⇧4** then **Space** captures a single window cleanly. Save each into
 `docs/images/` with the filename below.
 
@@ -18,6 +23,9 @@ On macOS, **⌘⇧4** then **Space** captures a single window cleanly. Save each
 
 Tips for clean shots:
 
+- **Detach any pack first** (`pennyworth pack detach`) so the shots show the
+  generic butler, not a private platform. The public repo's images must not leak
+  platform names, repos, or team — capture in the no-pack (generic) state.
 - Set a comfortable UI scale (⌘0 resets to 100%).
 - Use the default **Pennyworth** theme for consistency, or note the theme in the
   alt text if you use another.
