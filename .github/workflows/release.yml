@@ -56,7 +56,7 @@ jobs:
         run: |
           tag="${GITHUB_REF_NAME#v}"
           pyproject="$(poetry version -s)"
-          init="$(poetry run python -c 'import pennyworth; print(pennyworth.__version__)')"
+          init="$(python3 -c "import re, pathlib; m=re.search(r'__version__ = \"(.+?)\"', pathlib.Path('src/pennyworth/__init__.py').read_text()); print(m.group(1))")"
           echo "tag=$tag  pyproject=$pyproject  __init__=$init"
           if [ "$tag" != "$pyproject" ] || [ "$tag" != "$init" ]; then
             echo "::error::Version mismatch — tag '$tag', pyproject '$pyproject', __init__ '$init' must all agree. Use scripts/cut-release.sh."
