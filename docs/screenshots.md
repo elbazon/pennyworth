@@ -4,10 +4,12 @@ The docs reference images under `docs/images/`. These need to be captured from a
 running app on a real display (they can't be generated headlessly). Here's
 exactly what to grab — about five minutes of work.
 
-> ⚠️ The committed images are **stale** — captured before the Pennyworth rebrand,
-> so they show the old "Alfred" UI, and `app-overview.png` was shot with a private
-> platform pack attached (it leaks platform internals into the public repo).
-> Recapture all six with the guidance below.
+> ✅ The committed images are **current** — recaptured after the Pennyworth
+> rebrand, in the generic (no-pack) state, so they show the butler UI with no
+> platform internals. Two are worth a fresh grab when convenient:
+> `app-overview.png` currently reuses the chat-streaming shot, and `knowledge.png`
+> shows the empty state rather than a populated panel. Recapture using the
+> guidance below if you want dedicated shots for those two.
 
 On macOS, **⌘⇧4** then **Space** captures a single window cleanly. Save each into
 `docs/images/` with the filename below.
