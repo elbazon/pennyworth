@@ -2807,6 +2807,54 @@
     chat.status = text;
     if (chat === activeChat) setStatus(text);
   }
+  // ---- busy phrases: a dignified rotation while a turn runs ----------------
+  // The status line otherwise reads a flat "thinking…". These give the wait a
+  // personality — Marvel's playful loaders, in the butler's register, with the
+  // odd nod to the household he keeps. Cycled every few seconds for the length
+  // of a turn (startBusy on turn_start → stopBusy on turn_end); the
+  // "(model · reason)" suffix rides along so the wait still tells you what's
+  // running. Tool actions stream to the work panel, not here, so nothing real
+  // is overwritten.
+  const BUSY_PHRASES = [
+    "Polishing the silver", "Consulting the archives", "Decanting your answer",
+    "Pressing the morning papers", "Putting the kettle on", "Dusting the manor",
+    "Fetching the relevant dossier", "Turning the matter over",
+    "Attending to the particulars", "Composing a measured reply",
+    "Drawing back the curtains", "Warming the study", "Straightening my tie",
+    "Reviewing the household ledger", "Minding the details you'd rather not",
+    "Quietly handling it", "Consulting Master Wayne's notes", "Readying the cave",
+    "Sharpening the carving knives", "Laying out your evening attire",
+    "Checking the wine cellar", "Fetching the good china", "Seeing to it, sir",
+    "Tending to the manor's affairs", "A measured moment, if you'll allow it",
+  ];
+  function pickBusy(prev) {
+    let p = prev;
+    while (p === prev && BUSY_PHRASES.length > 1)
+      p = BUSY_PHRASES[Math.floor(Math.random() * BUSY_PHRASES.length)];
+    return p;
+  }
+  function busySuffix(chat) {
+    return chat.turnModel
+      ? " (" + chat.turnModel + (chat.turnReason ? " · " + chat.turnReason : "") + ")"
+      : "";
+  }
+  function paintBusy(chat) {
+    if (!chat.running) return;
+    chatStatus(chat, (chat.busyPhrase || "Attending to it") + "…" + busySuffix(chat));
+  }
+  function startBusy(chat) {
+    stopBusy(chat);
+    chat.busyPhrase = pickBusy("");
+    paintBusy(chat);
+    chat.busyTimer = setInterval(() => {
+      if (!chat.running) { stopBusy(chat); return; }
+      chat.busyPhrase = pickBusy(chat.busyPhrase);
+      paintBusy(chat);
+    }, 3600);
+  }
+  function stopBusy(chat) {
+    if (chat.busyTimer) { clearInterval(chat.busyTimer); chat.busyTimer = null; }
+  }
   // Transient notice floating above the composer. Used for hints that the busy
   // status row can't carry (e.g. "still working" while it streams). A fresh call
   // replaces any visible toast so notices never stack.
@@ -2883,8 +2931,7 @@
     if (e.type === "model") {
       // The resolved model for this turn (replaces "auto" once the agent picks).
       chat.turnModel = e.model;
-      if (chat === activeChat && chat.status)
-        chatStatus(chat, "thinking… (" + e.model + ")");
+      paintBusy(chat);   // keep the current loading phrase, update the model suffix
       return;
     }
     if (e.type === "stream") { streamEvent(chat, e); return; }
@@ -2896,8 +2943,7 @@
         chat.turnReason = e.routedReason || "";
         chat.turnEffort = e.effort || "";
         if (chat === activeChat) { $("brainBtn").classList.add("working"); maybeShowFocus(); }
-        chatStatus(chat, (e.verb ? e.verb + "… " : "thinking… ") +
-          "(" + e.model + (e.routedReason ? " · " + e.routedReason : "") + ")");
+        startBusy(chat);   // rotate the butler's loading flavour for the turn
         break;
       case "usage":
         chat.cost = e.chatCost || chat.cost;
@@ -2914,6 +2960,7 @@
       case "error": addError(chat, e.text); break;
       case "turn_end": {
         const t = chat.turn;
+        stopBusy(chat);   // end the loading-phrase rotation for this turn
         $("brainBtn").classList.remove("working");
         // Freeze any still-running step/thinking timers for THIS chat — a tool
         // that never got a tool_done would otherwise count up forever.
