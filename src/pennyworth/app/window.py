@@ -1,4 +1,4 @@
-"""Launch the Pennyworth desktop app (Alfred) in a native window.
+"""Launch the Pennyworth desktop app in a native window.
 
 A pywebview shell. ``pywebview`` is imported lazily inside :func:`main` so the
 package (and the CLI) work without the optional ``app`` extra installed.
@@ -53,7 +53,7 @@ def index_path() -> Path:
 
 
 def portrait_path() -> Path:
-    """Absolute path to Alfred's portrait / app avatar."""
+    """Absolute path to Pennyworth's portrait / app avatar."""
     return _web_dir() / "logo.png"
 
 
@@ -113,7 +113,7 @@ def _adopt_identity_pre_launch() -> None:
 
 
 def _adopt_identity_post_launch() -> None:
-    """Set the Dock icon to Alfred's portrait and make Pennyworth a foreground app.
+    """Set the Dock icon to Pennyworth's portrait and make Pennyworth a foreground app.
 
     pywebview runs this ``webview.start(func=...)`` callback on a worker thread;
     AppKit calls must be marshalled to the main thread. ``setActivationPolicy_(0)``
@@ -186,7 +186,7 @@ def main() -> int:
     # Hand the live window to the bridge so it can push streaming events into
     # the page (window.alfredEvent). Must happen before the event loop starts.
     bridge.attach_window(window)
-    # Adopt the Alfred dock icon + foreground activation once the GUI is up.
+    # Adopt the Pennyworth dock icon + foreground activation once the GUI is up.
     webview.start(_adopt_identity_post_launch)
     return 0
 

@@ -3,7 +3,7 @@
 This is **host-side** configuration, distinct from a pack. A pack's
 ``principal_block`` describes a *platform's* principal (whom that platform
 serves); the profile describes the *local human* using this Pennyworth and the
-honorific Alfred should use for them. It lives under ``PENNYWORTH_HOME`` so it
+honorific Pennyworth should use for them. It lives under ``PENNYWORTH_HOME`` so it
 belongs to the user, not to any pack — switch packs and your profile stays.
 
 With no profile set, the brain falls back to the persona's generic rule:
@@ -127,7 +127,7 @@ def update_profile(*, name: str | None = None, address: str | None = None) -> Pr
 
 
 def clear_profile() -> None:
-    """Remove the stored profile. Alfred falls back to the generic address rule."""
+    """Remove the stored profile. Pennyworth falls back to the generic address rule."""
     path = profile_path()
     if path.is_file():
         path.unlink()

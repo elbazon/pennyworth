@@ -75,7 +75,7 @@ _THEME_VARS = (
 )
 
 # The settings the panel edits, with defaults. Stored in app/settings.json;
-# ``name`` is mirrored to the Pennyworth profile so Alfred's address works.
+# ``name`` is mirrored to the Pennyworth profile so Pennyworth's address works.
 _SETTING_DEFAULTS = {
     "name": "",
     "email": "",
@@ -274,7 +274,7 @@ class Bridge:
                 data.update({k: stored[k] for k in stored if k in _SETTING_DEFAULTS})
         except (OSError, ValueError):
             pass
-        # Name is canonical on the profile so Alfred's address is consistent.
+        # Name is canonical on the profile so Pennyworth's address is consistent.
         prof = self._profile_provider()
         if prof.name:
             data["name"] = prof.name
@@ -454,7 +454,7 @@ class Bridge:
         request = _compose(chat["messages"])
         model_id = _MODEL_TO_ID.get(chat["model"], None)
         # Hand the agent every configured repo as an extra working directory, so
-        # Alfred can read and operate on them rather than treating them as
+        # Pennyworth can read and operate on them rather than treating them as
         # "outside the workspace". The chat's own cwd is passed separately.
         add_dirs = [
             r["path"]
@@ -1243,7 +1243,7 @@ class Bridge:
             return {"error": str(exc)}
         return self.get_dir_paths()
 
-    # --- domain knowledge (injected into Alfred's prompt at runtime) -----
+    # --- domain knowledge (injected into Pennyworth's prompt at runtime) -----
 
     def _knowledge_path(self) -> Path:
         return self._app_dir() / "knowledge.json"
@@ -1537,7 +1537,7 @@ class Bridge:
     def save_feedback(
         self, chat_id: str, rating: str, note: str = "", reply_text: str = ""
     ) -> dict:
-        """Record a thumbs-up / thumbs-down on one of Alfred's replies.
+        """Record a thumbs-up / thumbs-down on one of Pennyworth's replies.
 
         Appended to ~/.pennyworth/app/feedback.jsonl for later review."""
         import datetime as _dt

@@ -1,7 +1,7 @@
 [tool.poetry]
 name = "pennyworth"
 version = "0.1.0"
-description = "Pennyworth — a dignified butler-engineer AI companion you talk to as Alfred. The open-source core."
+description = "Pennyworth — a dignified butler-engineer AI companion you talk to. The open-source core."
 authors = ["Haim Elbaz <haim@morning.co>"]
 license = "Apache-2.0"
 readme = "README.md"

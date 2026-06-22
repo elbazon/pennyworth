@@ -1,4 +1,4 @@
-"""The pack contract: how a platform teaches Alfred whom he serves.
+"""The pack contract: how a platform teaches Pennyworth whom he serves.
 
 A :class:`Pack` supplies the platform-specific *seams* that the core weaves
 into the assembled prompt. The core depends on this interface and never on any
@@ -26,7 +26,7 @@ class Skill:
     """A single on-demand reference document a pack provides.
 
     Skills are not inlined into the brain — only an index of them is. The brain
-    tells Alfred *when* to read each one and *where* it lives, and he reads it
+    tells Pennyworth *when* to read each one and *where* it lives, and he reads it
     via the host agent's file tools at the moment a task matches.
 
     Attributes:
@@ -71,12 +71,12 @@ class Repo:
 
 @dataclass(frozen=True)
 class Hand:
-    """An MCP tool server a pack gives Alfred — his "hands" on the platform.
+    """An MCP tool server a pack gives Pennyworth — his "hands" on the platform.
 
-    The brain only *indexes* hands — ``name`` and ``summary``: it tells Alfred
+    The brain only *indexes* hands — ``name`` and ``summary``: it tells Pennyworth
     which tool servers exist and when to reach for each. The core never imports
     platform tooling — this is the boundary it talks across (design principle
-    #2); Alfred invokes the servers through the host agent's own MCP machinery.
+    #2); Pennyworth invokes the servers through the host agent's own MCP machinery.
 
     The transport fields below are how a hand becomes *live* rather than merely
     indexed: when present, the runner wires the server into a Claude-protocol
@@ -93,7 +93,7 @@ class Hand:
 
     Attributes:
         name: How the tool server is referred to (e.g. ``"github"``).
-        summary: One line on what it gives Alfred hands on — when to reach for it.
+        summary: One line on what it gives Pennyworth hands on — when to reach for it.
         command: For a stdio server, the executable to spawn (e.g. ``"npx"``).
         args: Arguments passed to ``command``.
         url: For a remote server, its endpoint URL.
@@ -127,10 +127,10 @@ class Pack:
         platform_name: How the platform is referred to in prose, e.g.
             ``"the Acme platform"``. Woven into the persona binding.
         platform_blurb: One sentence describing what the platform is — the
-            stack, the surfaces, what Alfred tends. Woven into the persona
+            stack, the surfaces, what Pennyworth tends. Woven into the persona
             binding when present.
         principal_block: An optional, verbatim Markdown block describing a
-            *principal* — a primary user Alfred treats specially. Packs may
+            *principal* — a primary user Pennyworth treats specially. Packs may
             keep this private; the core only injects whatever string it is
             given, and injects nothing when it is empty.
         attribution_block: An optional, verbatim Markdown block stating the
@@ -143,7 +143,7 @@ class Pack:
         skills: The pack's on-demand reference documents. The brain renders an
             index of these (never their contents); empty means no Skill Library
             section at all.
-        team: The platform's people, rendered as a roster so Alfred knows the
+        team: The platform's people, rendered as a roster so Pennyworth knows the
             team. Empty means no Team section.
         repos: The repositories the platform works in, rendered as an inventory.
             Empty means no Repositories section.
@@ -151,7 +151,7 @@ class Pack:
             index of "hands". Empty means no Hands section.
         ci_provider: The platform's CI/CD provider (e.g. ``"GitHub Actions"``,
             ``"GitLab CI"``). When set, the brain gains a short CI section
-            orienting Alfred for build/deploy diagnosis. Empty means no CI
+            orienting Pennyworth for build/deploy diagnosis. Empty means no CI
             section. The *deep* CI knowledge (build-config ids, deploy recipes)
             belongs in a skill, and the tools to query CI in a hand — this seam
             is only the orienting fact of which provider runs where.

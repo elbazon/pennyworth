@@ -1,6 +1,7 @@
-"""Pennyworth — the open-source core of Alfred, a butler-engineer AI companion.
+"""Pennyworth — the open-source core of a butler-engineer AI companion.
 
-The persona is **Alfred**; the project is **Pennyworth**. The core is
+The persona and the project are both **Pennyworth**, modeled after the
+gentleman's butler Alfred Pennyworth. The core is
 platform-agnostic: it knows *how* to serve, not *whom*. Everything specific to
 a platform arrives through a :class:`~pennyworth.pack.Pack`. With no pack
 attached, the assembled prompt — the "brain" — contains zero platform

@@ -1,8 +1,8 @@
-"""Drive a host coding agent with Alfred's assembled brain.
+"""Drive a host coding agent with Pennyworth's assembled brain.
 
 :func:`~pennyworth.prompt.build_system_prompt` produces the brain; this module
 hands it to a coding-agent CLI — the Claude Code CLI (``claude``) by default —
-via ``--append-system-prompt``, so the agent acts *as Alfred*. The brain is
+via ``--append-system-prompt``, so the agent acts *as Pennyworth*. The brain is
 *appended* to the host's own system prompt rather than replacing it, which keeps
 the host's session handling intact.
 

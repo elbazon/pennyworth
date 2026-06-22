@@ -218,7 +218,7 @@ def attach(path: str | Path) -> Pack:
 
 
 def detach() -> None:
-    """Detach the active pack. Alfred falls back to the generic (no-pack) brain.
+    """Detach the active pack. Pennyworth falls back to the generic (no-pack) brain.
 
     Clears the active pointer; installed pack files are left in the store so the
     pack can be re-activated later.

@@ -1,4 +1,4 @@
-"""AI providers — let Alfred run on more than the Claude Code CLI.
+"""AI providers — let Pennyworth run on more than the Claude Code CLI.
 
 Two backends, behind one ``stream_events`` entry point that mirrors
 :func:`pennyworth.runner.stream_events`:
@@ -10,8 +10,8 @@ Two backends, behind one ``stream_events`` entry point that mirrors
   This is a *conversational* backend — it streams replies (and reasoning, where
   the model exposes it) but does not edit files or run tools on its own.
 
-The system prompt (Alfred's brain, plus any injected knowledge) is assembled the
-same way for every backend, so Alfred stays in character whichever model answers.
+The system prompt (Pennyworth's brain, plus any injected knowledge) is assembled the
+same way for every backend, so Pennyworth stays in character whichever model answers.
 """
 
 from __future__ import annotations
