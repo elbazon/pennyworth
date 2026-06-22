@@ -42,8 +42,8 @@ You need **Python 3.11+** and the **Claude CLI signed in** (`claude auth login`)
 The desktop app is **macOS**; the command line runs anywhere.
 
 ```bash
-pipx install 'pennyworth[app]'     # install Pennyworth, with the desktop app
-pennyworth app                     # launch the app
+pipx install 'pennyworth-ai[app]'  # install Pennyworth, with the desktop app
+pennyworth app                     # launch the app (command is still `pennyworth`)
 ```
 
 A window opens to the welcome screen — type a request like *"explain this codebase"*
@@ -134,9 +134,8 @@ clean-brain test; CI runs lint, format, and the test suite across Python 3.11–
 
 Honest about the edges: a few panels are graceful stubs — **Connectors** (MCP
 management), **Scheduled** firing, and **slash commands** — and the desktop app is
-macOS-only for now. On the roadmap: PyPI packaging, those stubs, and
-**multi-provider support** (OpenAI and local LLMs behind the runner seam, alongside
-Claude).
+macOS-only for now. On the roadmap: those stubs and **multi-provider support**
+(OpenAI and local LLMs behind the runner seam, alongside Claude).
 
 ## Contributing
 

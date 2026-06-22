@@ -4,7 +4,7 @@ This is the maintainer guide for cutting a release. Pennyworth ships to
 [PyPI](https://pypi.org/project/pennyworth/) so users can simply:
 
 ```bash
-pipx install 'pennyworth[app]'
+pipx install 'pennyworth-ai[app]'
 pennyworth app
 ```
 
@@ -25,7 +25,7 @@ on PyPI yet, use a **pending publisher**:
 
 1. Go to <https://pypi.org/manage/account/publishing/>.
 2. Add a new pending publisher with:
-   - **PyPI Project Name:** `pennyworth`
+   - **PyPI Project Name:** `pennyworth-ai`
    - **Owner:** `elbazon`
    - **Repository name:** `pennyworth`
    - **Workflow name:** `release.yml`

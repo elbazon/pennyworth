@@ -23,8 +23,8 @@ If `claude` isn't installed, install the Claude Code CLI first (or point
 ## 2. Install
 
 ```bash
-pipx install 'pennyworth[app]'     # Pennyworth, with the desktop app (recommended)
-pipx install pennyworth            # command line only, no desktop app
+pipx install 'pennyworth-ai[app]'  # Pennyworth, with the desktop app (recommended)
+pipx install pennyworth-ai         # command line only, no desktop app
 ```
 
 From a clone, for development:
