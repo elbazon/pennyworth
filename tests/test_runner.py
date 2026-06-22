@@ -51,7 +51,7 @@ def test_run_invokes_agent_with_brain_and_request(tmp_path, monkeypatch):
     dumped = cap.read_text()
     assert "--append-system-prompt" in dumped
     assert "hello world" in dumped
-    assert "You are Alfred" in dumped  # the assembled brain reached the agent
+    assert "You are Pennyworth" in dumped  # the assembled brain reached the agent
 
 
 def test_run_reports_missing_agent(monkeypatch, capsys):

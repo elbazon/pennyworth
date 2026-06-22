@@ -50,7 +50,7 @@ def _run_turn_sync(bridge, chat_id, text, *, timeout=5.0):
 def test_get_state_carries_the_boot_payload():
     state = _bridge().get_state()
     assert state["app"] == "Pennyworth"
-    assert state["assistant"] == "Alfred"
+    assert state["assistant"] == "Pennyworth"
     assert state["models"] == MODELS
     assert state["personas"] == PERSONAS
     assert state["efforts"] == EFFORTS
@@ -470,7 +470,7 @@ def test_compose_includes_prior_turns():
     )
     assert "Conversation so far" in request
     assert "User: what is 2+2" in request
-    assert "Alfred: Four, sir." in request
+    assert "Pennyworth: Four, sir." in request
     assert request.rstrip().endswith("and times three?")
 
 
@@ -479,7 +479,7 @@ def test_compose_includes_prior_turns():
 
 def test_window_config_and_ui_asset():
     cfg = window.window_config()
-    assert cfg["title"] == "Alfred"
+    assert cfg["title"] == "Pennyworth"
     assert "url" in cfg
     assert str(window.index_path()) in cfg["url"]
     assert window.index_path().is_file()

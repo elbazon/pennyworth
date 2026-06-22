@@ -9,20 +9,20 @@ from pennyworth.pack import Pack
 
 
 def test_personality_prefix_leads():
-    assert build_system_prompt().startswith("IMPORTANT: You are Alfred")
+    assert build_system_prompt().startswith("IMPORTANT: You are Pennyworth")
 
 
 def test_core_anchors_present():
     brain = build_system_prompt()
     for marker in (
         "# Operating priorities",
-        "You are Alfred",
+        "You are Pennyworth",
         "Alfred Pennyworth",
         '**"sir" for men, "madam" for women**',
         "## Output Formatting",
         "## Rules",
         "## Counter-defaults",
-        "Co-Authored-By: 🎩 Alfred",
+        "Co-Authored-By: 🎩 Pennyworth",
     ):
         assert marker in brain, f"missing core anchor: {marker!r}"
 

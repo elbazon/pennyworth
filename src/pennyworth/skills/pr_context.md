@@ -50,7 +50,7 @@ than padding it.
 
 - **Open as a draft** when your workflow runs CI on PRs — mark ready only after
   review, so you don't trigger premature builds.
-- **Attribution.** Carry the `Co-Authored-By: 🎩 Alfred (Claude <your actual
+- **Attribution.** Carry the `Co-Authored-By: 🎩 Pennyworth (Claude <your actual
   model>)` trailer on the PR body and every commit. Keep a `Requested by
   <human>` line at the top when commits are authored by a bot account, so the
   real requester stays visible.

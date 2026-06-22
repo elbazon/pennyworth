@@ -62,7 +62,7 @@ def test_openai_compatible_streams_text_and_thinking(monkeypatch):
     assert captured["auth"] == "Bearer sk-test"
     assert captured["body"]["model"] == "gpt-4o-mini"
     assert captured["body"]["stream"] is True
-    # system prompt (Alfred's brain) + the user request are both sent
+    # system prompt (Pennyworth's brain) + the user request are both sent
     roles = [m["role"] for m in captured["body"]["messages"]]
     assert roles == ["system", "user"]
 

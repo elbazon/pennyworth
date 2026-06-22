@@ -1,7 +1,7 @@
 """The Pennyworth command line — ``pennyworth``.
 
 Manage knowledge packs, render the assembled brain, and run a host coding agent
-as Alfred. A bare ``pennyworth "<request>"`` is shorthand for ``pennyworth run``.
+as Pennyworth. A bare ``pennyworth "<request>"`` is shorthand for ``pennyworth run``.
 """
 
 from __future__ import annotations
@@ -29,7 +29,7 @@ def _cmd_pack_list(_args: argparse.Namespace) -> int:
         marker = "  (active)" if name == active else ""
         print(f"- {name}{marker}")
     if not active:
-        print("\nNo pack is active — Alfred is running generic.")
+        print("\nNo pack is active — Pennyworth is running generic.")
     return 0
 
 
@@ -41,7 +41,7 @@ def _cmd_pack_attach(args: argparse.Namespace) -> int:
 
 def _cmd_pack_detach(_args: argparse.Namespace) -> int:
     _packs.detach()
-    print("Detached. Alfred is now running generic (no pack).")
+    print("Detached. Pennyworth is now running generic (no pack).")
     return 0
 
 
@@ -84,7 +84,7 @@ def _cmd_profile_show(_args: argparse.Namespace) -> int:
         )
         return 0
     print(f"name:    {prof.name or '(unset)'}")
-    print(f"address: {prof.address or '(unset — Alfred will ask)'}")
+    print(f"address: {prof.address or '(unset — Pennyworth will ask)'}")
     print(f"\nStored at {_profile.profile_path()}")
     return 0
 
@@ -102,7 +102,7 @@ def _cmd_profile_set(args: argparse.Namespace) -> int:
 
 def _cmd_profile_clear(_args: argparse.Namespace) -> int:
     _profile.clear_profile()
-    print("Profile cleared. Alfred will use the generic address rule.")
+    print("Profile cleared. Pennyworth will use the generic address rule.")
     return 0
 
 
@@ -180,7 +180,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
 
     profile_cmd = sub.add_parser(
-        "profile", help="manage your profile (name + how Alfred addresses you)"
+        "profile", help="manage your profile (name + how Pennyworth addresses you)"
     )
     profile_cmd.set_defaults(func=_cmd_profile_show)  # bare `alfred profile` shows
     profile_sub = profile_cmd.add_subparsers(dest="profile_command")
@@ -192,7 +192,7 @@ def build_parser() -> argparse.ArgumentParser:
     pset.add_argument(
         "--address",
         choices=_profile.VALID_ADDRESSES,
-        help="how Alfred addresses you (sir or madam)",
+        help="how Pennyworth addresses you (sir or madam)",
     )
     pset.set_defaults(func=_cmd_profile_set)
     profile_sub.add_parser("clear", help="clear your profile").set_defaults(
@@ -203,12 +203,12 @@ def build_parser() -> argparse.ArgumentParser:
         "prompt", help="print the assembled system prompt for the active pack"
     ).set_defaults(func=_cmd_prompt)
 
-    run = sub.add_parser("run", help="run a one-shot request as Alfred")
+    run = sub.add_parser("run", help="run a one-shot request as Pennyworth")
     run.add_argument("request", nargs="+", help="the request")
     _add_agent_args(run)
     run.set_defaults(func=_cmd_run)
 
-    chat = sub.add_parser("chat", help="start an interactive Alfred session")
+    chat = sub.add_parser("chat", help="start an interactive Pennyworth session")
     chat.add_argument("request", nargs="*", help="optional opening message")
     _add_agent_args(chat)
     chat.set_defaults(func=_cmd_chat)

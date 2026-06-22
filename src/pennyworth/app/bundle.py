@@ -182,10 +182,10 @@ def _dock_app(app_path: Path) -> None:
     tile = (
         "<dict><key>tile-data</key><dict>"
         "<key>file-data</key><dict>"
-        "<key>_CFURLString</key><string>{path}</string>"
+        f"<key>_CFURLString</key><string>{str(app_path)}</string>"
         "<key>_CFURLStringType</key><integer>0</integer>"
         "</dict></dict></dict>"
-    ).format(path=str(app_path))
+    )
     try:
         subprocess.run(
             ["defaults", "write", "com.apple.dock", "persistent-apps",

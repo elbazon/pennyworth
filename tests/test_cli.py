@@ -30,7 +30,7 @@ def test_attach_prompt_detach_roundtrip(tmp_path, monkeypatch, capsys):
 
 def test_no_args_prints_help(capsys):
     assert cli.main([]) == 0
-    assert "Alfred" in capsys.readouterr().out
+    assert "Pennyworth" in capsys.readouterr().out
 
 
 def test_profile_set_show_clear_roundtrip(tmp_path, monkeypatch, capsys):
