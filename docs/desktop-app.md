@@ -156,6 +156,7 @@ Version, the Pennyworth persona, capabilities, and credits.
 ## Keyboard
 
 - **⌘N** — new chat
+- **⌘F** — focus the sidebar chat search
 - **⌘+ / ⌘- / ⌘0** — UI scale up / down / reset
 - **Enter** — send · **Shift-Enter** — newline
 

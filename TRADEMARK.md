@@ -26,7 +26,7 @@ about naming or endorsement: contact the author.
 
 ## Homage & third-party marks
 
-Alfred's character is written in admiration of the classic gentleman's-butler
+Pennyworth's character is written in admiration of the classic gentleman's-butler
 tradition. "Batman", "Alfred Pennyworth", and "Batcave" are trademarks of
 DC Comics / Warner Bros. Entertainment Inc. They are referenced here only as
 an affectionate homage; this project is independent and is **not** affiliated
