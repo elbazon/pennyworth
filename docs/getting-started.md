@@ -4,8 +4,9 @@ This guide takes you from nothing to a working **Pennyworth** — the dignified
 butler-engineer — running on your own machine in about five minutes.
 
 > **Pennyworth** is the open-source project, the runtime, and the assistant you
-> talk to — modeled on Alfred Pennyworth, the gentleman's butler. The clean core
-> is generic; everything platform-specific attaches to it through a *pack*.
+> talk to. His full name is Alfred Pennyworth, the gentleman's butler — but he goes
+> by Pennyworth. The clean core is generic; everything platform-specific attaches
+> to it through a *pack*.
 
 ## 1. Prerequisites
 

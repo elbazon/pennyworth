@@ -11,8 +11,9 @@
 ![Pennyworth — the open-source desktop app](docs/images/app-overview.png)
 
 **Pennyworth** is the open-source project, the Python package, and the assistant you
-talk to — modeled on Alfred Pennyworth, the gentleman's butler. You install the
-package and run the `pennyworth` command (`alfred` still works as an alias).
+talk to. His full name is Alfred Pennyworth, the gentleman's butler — but he goes by
+Pennyworth. You install the package and run the `pennyworth` command (`alfred` still
+works as an alias).
 
 Under the hood, Pennyworth drives a host coding agent (the
 [Claude Code](https://claude.com/claude-code) CLI by default) with a carefully
