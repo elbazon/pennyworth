@@ -1142,8 +1142,13 @@
     </div>
     <button class="newchat" id="newChatBtn">＋&nbsp; New chat</button>
     <div class="sidescroll">
-      <div class="sect">Chats</div>
+      <div class="searchwrap">
+        <input id="chatSearch" type="text" autocomplete="off" spellcheck="false"
+          placeholder="Search chats… (⌘F)" />
+        <button id="chatSearchClear" title="Clear search" hidden>✕</button>
+      </div>
       <div id="chatList"></div>
+      <div id="searchResults" hidden></div>
     </div>
     <nav>
       <button id="navBatcave" title="Your configured repositories at a glance — each one's branch and uncommitted changes"><span>🦇</span>Batcave</button>
@@ -2452,6 +2457,99 @@
   }
   // Click a row: switch to it if it's already open, else load its full
   // conversation from the store and open it.
+  // ---- search chats ---------------------------------------------------------
+  // Filter the sidebar to chats whose title or transcript matches the query.
+  // The bridge (search_chats) scans persisted chats; live unpersisted chats are
+  // folded in here so an in-progress conversation is searchable too. A result
+  // click opens that chat. ⌘F focuses the box; Esc clears it. The bridge returns
+  // each snippet as a plain string (not an {excerpt} object), so read it as one.
+  let _searchTimer = null;
+  function _escapeRe(s) { return String(s).replace(/[.*+?^${}()|[\]\\]/g, "\\$&"); }
+  function _highlightSnippet(text, q) {
+    const safe = esc(text || "");
+    if (!q) return safe;
+    return safe.replace(new RegExp(_escapeRe(esc(q)), "gi"), (m) => "<mark>" + m + "</mark>");
+  }
+  function exitSearch() {
+    $("searchResults").hidden = true;
+    $("searchResults").innerHTML = "";
+    $("chatList").hidden = false;
+  }
+  function resetSearchField() {
+    const inp = $("chatSearch");
+    if (inp) inp.value = "";
+    $("chatSearchClear").hidden = true;
+    exitSearch();
+  }
+  function clearSearch() { resetSearchField(); }
+  function renderSearchResults(results, q) {
+    const box = $("searchResults");
+    box.innerHTML = "";
+    $("chatList").hidden = true;
+    box.hidden = false;
+    if (!results.length) {
+      box.append(el("div", "sempty", "No chats match “" + q + "”."));
+      return;
+    }
+    for (const res of results) {
+      const row = el("div", "sresult");
+      const top = el("div", "st");
+      top.append(el("span", "", res.title || "untitled"));
+      top.append(el("span", "shits",
+        res.hits + " hit" + (res.hits === 1 ? "" : "s") + (res.age ? " · " + res.age : "")));
+      row.append(top);
+      const snip = (res.snippets && res.snippets[0]) || "";
+      if (snip) {
+        const sx = el("div", "sx");
+        sx.innerHTML = _highlightSnippet(snip, q);
+        row.append(sx);
+      }
+      row.addEventListener("click", async () => {
+        await openOrSwitch(res.id, res.title);
+        resetSearchField();
+      });
+      box.append(row);
+    }
+  }
+  async function runSearch(q) {
+    q = (q || "").trim();
+    $("chatSearchClear").hidden = !q;
+    if (q.length < 2) { exitSearch(); return; }
+    let results = [];
+    if (api() && api().search_chats) {
+      try { results = (await api().search_chats(q)) || []; } catch (e) { results = []; }
+    }
+    // Fold in live chats not yet persisted (no file for the bridge to scan).
+    const seen = new Set(results.map((r) => r.id));
+    const ql = q.toLowerCase();
+    for (const [id, c] of chats) {
+      if (seen.has(id) || !c.messages || !c.messages.length) continue;
+      let hits = 0, snip = "";
+      if ((c.title || "").toLowerCase().includes(ql)) hits++;
+      for (const m of c.messages) {
+        const n = (m.text || "").toLowerCase().split(ql).length - 1;
+        if (n > 0) { hits += n; if (!snip) snip = (m.text || "").slice(0, 120); }
+      }
+      if (hits) results.unshift({ id, title: c.title || "untitled", age: "",
+                                  hits, snippets: snip ? [snip] : [] });
+    }
+    renderSearchResults(results, q);
+  }
+  (function wireSearch() {
+    const inp = $("chatSearch");
+    if (!inp) return;
+    inp.addEventListener("input", () => {
+      clearTimeout(_searchTimer);
+      const q = inp.value;
+      _searchTimer = setTimeout(() => runSearch(q), 140);   // debounce keystrokes
+    });
+    inp.addEventListener("keydown", (e) => {
+      e.stopPropagation();   // keep ⌘1-9 / typing out of the global handler
+      if (e.key === "Escape") { e.preventDefault(); clearSearch(); inp.blur(); }
+    });
+    $("chatSearchClear").addEventListener("click", () => { clearSearch(); inp.focus(); });
+  })();
+
   async function openOrSwitch(id, title) {
     if (chats.has(id)) { switchChat(id); return; }
     if (!api()) return;
@@ -4025,6 +4123,10 @@
   document.addEventListener("keydown", (ev) => {
     if ((ev.metaKey || ev.ctrlKey) && ev.key.toLowerCase() === "n") {
       ev.preventDefault(); createChat();
+    } else if ((ev.metaKey || ev.ctrlKey) && ev.key.toLowerCase() === "f") {
+      // ⌘F focuses the chat search box (matches its placeholder hint).
+      const s = $("chatSearch");
+      if (s) { ev.preventDefault(); s.focus(); s.select(); }
     } else if ((ev.metaKey || ev.ctrlKey) && ev.key >= "1" && ev.key <= "9") {
       // ⌘1/2/3… jumps to the chat in that VISIBLE position (pins first), and
       // opens it from the store if it isn't already loaded.
