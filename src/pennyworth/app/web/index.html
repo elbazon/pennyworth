@@ -769,6 +769,15 @@
   .attachchip button { border: none; background: none; color: var(--text-dim);
     cursor: pointer; font-size: 12px; }
   .attachchip button:hover { color: var(--danger); }
+  /* Pre-send image preview: a clickable thumbnail with a remove badge overlaid
+     in the top-right corner. Mirrors the in-bubble .attach-thumb look. */
+  .attachthumbcell { position: relative; display: inline-flex; }
+  .attachthumbcell .attach-thumb { max-width: 88px; max-height: 88px; }
+  .attachthumbcell .thumbx { position: absolute; top: -6px; right: -6px;
+    width: 19px; height: 19px; border-radius: 50%; border: 1px solid var(--border);
+    background: var(--bg-elev); color: var(--text); cursor: pointer;
+    font-size: 11px; line-height: 1; display: grid; place-items: center; padding: 0; }
+  .attachthumbcell .thumbx:hover { background: var(--danger); color: #fff; border-color: var(--danger); }
   .step.openable { cursor: pointer; }
   .step.openable:hover { background: var(--accent-soft); }
   .step.openable:hover .dt { color: var(--accent); }
@@ -1681,6 +1690,17 @@
       return `@@FENCE${fences.length - 1}@@`;
     });
     let h = esc(src);
+    // Guard TL;DR and Bottom-line markers BEFORE bold pass, so unbalanced bold
+    // elsewhere doesn't prevent them from matching. Store in placeholders, restore after.
+    let callouts = [];
+    h = h.replace(/^\*\*TL;DR:?\*\*:?\s*(.*)$/gm, (_, text) => {
+      callouts.push({ tag: 'tldr', text });
+      return `@@CALLOUT${callouts.length - 1}@@`;
+    });
+    h = h.replace(/^\*\*Bottom line:?\*\*:?\s*(.*)$/gm, (_, text) => {
+      callouts.push({ tag: 'bottomline', text });
+      return `@@CALLOUT${callouts.length - 1}@@`;
+    });
     h = h.replace(/`([^`\n]+)`/g, (_, c) => `<code>${c}</code>`);
     h = h.replace(/^### (.*)$/gm, "<h3>$1</h3>")
          .replace(/^## (.*)$/gm, "<h2>$1</h2>")
@@ -1688,6 +1708,9 @@
     h = h.replace(/\*\*([^*]+)\*\*/g, "<b>$1</b>")
          .replace(/(^|\W)\*([^*\n]+)\*(?=\W|$)/g, "$1<i>$2</i>");
     h = h.replace(/\[([^\]]+)\]\((https?:[^)]+)\)/g, '<a href="$2">$1</a>');
+    // Auto-link bare URLs not already inside an href attribute or a code span.
+    // Negative lookbehind on =/"/' avoids double-linking href values and src=.
+    h = h.replace(/(?<![='"<>])(https?:\/\/[^\s<"')\]]+)/g, '<a href="$1">$1</a>');
     // .filter drops empty entries: the leading \s* in each item pattern swallows
     // a blank line between items into the match block, so split("\n") yields an
     // empty middle element — which would otherwise render as a phantom empty
@@ -1701,13 +1724,11 @@
     // highlighted "done" row (the ✓ badge is supplied by CSS ::before).
     h = h.replace(/^(?:✅|✔️|✓)\s+(.*)$/gm,
       '<div class="milestone"><span class="mtext">$1</span></div>');
-    // TL;DR running-summary line → a titled callout (the "TL;DR" label is the CSS
-    // ::before badge). Runs after the bold pass, so "**TL;DR:**" is already
-    // "<b>TL;DR:</b>"; tolerate the colon inside or outside the bold.
-    h = h.replace(/^<b>TL;DR:?<\/b>:?\s*(.*)$/gim, '<div class="tldr">$1</div>');
-    // Bottom-line closing verdict: "**Bottom line:**" (or "**Bottom line**:") →
-    // a labelled callout that signals the conclusion of a reply.
-    h = h.replace(/^<b>Bottom line:?<\/b>:?\s*(.*)$/gim, '<div class="bottomline">$1</div>');
+    // Restore TL;DR and Bottom-line callouts from guarded placeholders.
+    h = h.replace(/@@CALLOUT(\d+)@@/g, (_, idx) => {
+      const c = callouts[parseInt(idx)];
+      return `<div class="${c.tag}">${c.text}</div>`;
+    });
     // markdown tables: header | --- | rows
     h = h.replace(/^(\|.+\|)\n(\|[\s:|-]+\|)\n((?:\|.*\|(?:\n|$))+)/gm,
       (_, head, _sep, rows) => {
@@ -3584,6 +3605,12 @@
     return "";
   }
   function autosize() {
+    // Capture whether the chat transcript is at the bottom before resizing the
+    // input, so we can re-pin it after. A growing input steals height from the
+    // transcript, causing the scroll position to jump unless we restore it.
+    const scrollCon = scrollContainer();
+    const wasAtBottom = scrollCon.scrollHeight - scrollCon.scrollTop - scrollCon.clientHeight < 24;
+
     input.style.height = "auto";
     const sh = input.scrollHeight;
     input.style.height = Math.min(sh, 160) + "px";
@@ -3591,6 +3618,11 @@
     // tolerance absorbs sub-pixel rounding at fractional UI zoom levels, which
     // otherwise leaves a permanent hairline bar.
     input.style.overflowY = sh > 162 ? "auto" : "hidden";
+
+    // Re-pin to bottom if we were at the bottom before the resize.
+    if (wasAtBottom) {
+      scrollCon.scrollTop = scrollCon.scrollHeight;
+    }
   }
   input.addEventListener("input", autosize);
   // Keep the active chat's draft in sync so switching panes never loses what
@@ -4060,19 +4092,42 @@
 
   // ---- attachments (+ button → native file dialog → chips → message) ----
   let attachments = [];
-  function renderAttachments() {
+  async function renderAttachments() {
     const row = $("attachRow");
     row.innerHTML = "";
     for (const path of attachments) {
-      const chip = el("span", "attachchip");
-      chip.append(el("span", "", "📎 " + path.split("/").pop()));
-      const x = el("button", "", "✕");
-      x.addEventListener("click", () => {
+      const name = path.split("/").pop();
+      const remove = () => {
         attachments = attachments.filter((a) => a !== path);
         renderAttachments();
-      });
-      chip.append(x);
-      row.append(chip);
+      };
+      // Try a thumbnail first (cached paste data URL, else a bridge thumbnail) so
+      // images preview BEFORE sending — and the preview is clickable to view full
+      // size, exactly like the in-bubble thumbnail. Non-images fall back to a chip.
+      let dataUrl = _pastedThumbs.get(path) || "";
+      if (!dataUrl) {
+        try {
+          const info = api() && await api().attachment_thumbnail(path);
+          if (info && info.ok && info.dataUrl) dataUrl = info.dataUrl;
+        } catch (e) { /* */ }
+      }
+      if (dataUrl) {
+        const cell = el("span", "attachthumbcell");
+        const img = el("img", "attach-thumb"); img.src = dataUrl; img.alt = name; img.title = name;
+        img.addEventListener("click", () => api() && api().open_path && api().open_path(path));
+        const x = el("button", "thumbx", "✕"); x.title = "Remove";
+        x.addEventListener("click", (e) => { e.stopPropagation(); remove(); });
+        cell.append(img, x);
+        row.append(cell);
+      } else {
+        const chip = el("span", "attachchip");
+        const label = el("span", "", "📎 " + name);
+        chip.append(label);
+        const x = el("button", "", "✕");
+        x.addEventListener("click", remove);
+        chip.append(x);
+        row.append(chip);
+      }
     }
   }
   $("attachBtn").addEventListener("click", async () => {
