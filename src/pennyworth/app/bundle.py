@@ -106,6 +106,14 @@ def _build_icns(png: Path, dest: Path) -> bool:
         with tempfile.TemporaryDirectory() as tmp:
             iconset = Path(tmp) / "Pennyworth.iconset"
             iconset.mkdir()
+            # Mask the raw square photo into the macOS icon template first, so
+            # the resized .icns members are squircles with padding (matching the
+            # live tile). Fall back to the raw PNG if AppKit is unavailable —
+            # a square icon beats no icon.
+            from pennyworth.app.window import _write_templated_icon_png
+
+            templated = Path(tmp) / "pennyworth-templated.png"
+            src = templated if _write_templated_icon_png(png, templated) else png
             for size in (16, 32, 128, 256, 512):
                 subprocess.run(
                     [
@@ -113,7 +121,7 @@ def _build_icns(png: Path, dest: Path) -> bool:
                         "-z",
                         str(size),
                         str(size),
-                        str(png),
+                        str(src),
                         "--out",
                         str(iconset / f"icon_{size}x{size}.png"),
                     ],
@@ -127,7 +135,7 @@ def _build_icns(png: Path, dest: Path) -> bool:
                         "-z",
                         str(px),
                         str(px),
-                        str(png),
+                        str(src),
                         "--out",
                         str(iconset / f"icon_{label}x{label}@2x.png"),
                     ],
