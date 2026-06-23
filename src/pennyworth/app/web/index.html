@@ -340,10 +340,38 @@
     background: var(--bg-side); border-bottom: 1px solid var(--border);
     font-size: 12.5px; color: var(--text-dim); }
   main#chat.split > .pane.shown > .panehead { display: flex; }
-  /* Focus cue: a neutral lighter header + bolder title — NOT a coloured line
-     (a bare accent line read as an "empty green bar" when there was no persona). */
-  main#chat.split > .pane.shown.active > .panehead { background: var(--bg-elev); color: var(--text); }
+  /* Focus cue: the active pane carries a full accent frame, an accent-tinted
+     header, and full opacity; unfocused panes dim back so the eye lands on the
+     one the composer belongs to. This is the load-bearing "which window am I in"
+     signal — it must read even when two panes share the same persona accent. */
+  main#chat.split > .pane.shown { opacity: .55; transition: opacity .15s; }
+  main#chat.split > .pane.shown.active { opacity: 1;
+    box-shadow: inset 0 0 0 2px var(--accent); }
+  /* Opaque base + accent tint layered on top — a bare --accent-soft (~12% alpha)
+     let the transcript bleed THROUGH the sticky header, reading as the title
+     sitting behind the content. */
+  main#chat.split > .pane.shown.active > .panehead {
+    background: linear-gradient(var(--accent-soft), var(--accent-soft)), var(--bg-side);
+    color: var(--text); }
   main#chat.split > .pane.shown.active > .panehead .pnm { font-weight: 600; }
+  /* The relocated composer docks inside the active pane in split view; tighten
+     its padding to suit the narrower column. The pane is the scroll container, so
+     the composer is sticky-pinned to the bottom rather than scrolling with content. */
+  main#chat.split > .pane.shown > .composer-zone { padding: 8px 14px 12px;
+    border-top: 1px solid var(--accent);
+    position: sticky; bottom: 0; z-index: 4; background: var(--bg); }
+  /* Inactive panes get a click-to-focus stub bar where their composer would be,
+     so each window LOOKS self-contained even though one real composer is shared.
+     Sticky-pinned to the pane bottom, same as the real composer. */
+  .pane-stub { border-top: 1px solid var(--border);
+    padding: 11px 14px; background: var(--bg); cursor: text;
+    position: sticky; bottom: 0; z-index: 4; }
+  .pane-stub .stub-input { display: flex; align-items: center; gap: 8px;
+    background: var(--bg-input); border: 1px solid var(--border); border-radius: 13px;
+    padding: 9px 12px; color: var(--text-dim); font-size: 13px; }
+  .pane-stub:hover .stub-input { border-color: var(--accent); }
+  .pane-stub .stub-snd { margin-left: auto; width: 28px; height: 28px; border-radius: 8px;
+    background: var(--bg-elev); color: var(--text-dim); display: grid; place-items: center; font-weight: 800; }
   /* Keep header content clear of the fixed 🧠 button (top-right) and, when the
      sidebar is hidden, the ☰ button (top-left). */
   main#chat.split > .pane.pane-last > .panehead { padding-right: 52px; }
@@ -1188,7 +1216,7 @@
     <!-- CHAT -->
     <section class="view active" id="viewChat">
       <main id="chat"></main>
-      <div class="composer-zone">
+      <div class="composer-zone" id="composerZone">
         <button class="scrollbtn" id="scrollBtn" title="Jump to latest">↓</button>
         <div class="slashmenu" id="slashMenu"></div>
         <div id="status"></div>
@@ -1936,6 +1964,55 @@
         wireDivider(div, paneOrder[i], paneOrder[i + 1]);
         wrap.append(div);
       }
+    }
+    placeComposer();
+  }
+  // Per-pane composer: in split view the ONE real composer is relocated into the
+  // focused pane (so it visibly belongs to that window), and every other shown
+  // pane gets a lightweight click-to-focus stub bar where its composer would be.
+  // Keeping a single real composer means all its wiring — slash menu, attachments,
+  // send, drafts, terminal — survives untouched; only its parent node changes.
+  function placeComposer() {
+    const zone = $("composerZone");
+    if (!zone) return;
+    if (!isSplit() || !activeChat) {
+      // Single view: composer returns to its home at the bottom of the chat view,
+      // and any leftover stub bars are cleared.
+      document.querySelectorAll(".pane-stub").forEach((s) => s.remove());
+      if (zone.parentElement !== $("viewChat")) $("viewChat").append(zone);
+      return;
+    }
+    // Split view: keep the .active class honest, dock the composer in the focused
+    // pane, and stub every other shown pane.
+    for (const id of paneOrder) {
+      const c = chats.get(id);
+      if (!c) continue;
+      const isActive = c === activeChat;
+      c.pane.classList.toggle("active", isActive);
+      if (isActive) {
+        c.pane.querySelector(":scope > .pane-stub")?.remove();
+        if (zone.parentElement !== c.pane) c.pane.append(zone);
+      } else {
+        ensurePaneStub(c);
+      }
+    }
+  }
+  // A non-focused pane's stub composer: looks like an input, but a click just
+  // focuses the pane (which relocates the real composer into it).
+  function ensurePaneStub(chat) {
+    let stub = chat.pane.querySelector(":scope > .pane-stub");
+    if (!stub) {
+      stub = el("div", "pane-stub");
+      const row = el("div", "stub-input");
+      row.append(el("span", "stub-ta", `Reply to ${chat.title || "this chat"}…`),
+                 el("span", "stub-snd", "↑"));
+      stub.append(row);
+      stub.addEventListener("click", () => switchChat(chat.id));
+      chat.pane.append(stub);
+    } else {
+      // Keep the placeholder title fresh (titles arrive async from the bridge).
+      const ta = stub.querySelector(".stub-ta");
+      if (ta) ta.textContent = `Reply to ${chat.title || "this chat"}…`;
     }
   }
   // Drag a divider to repartition the two panes it sits between. Each pane
