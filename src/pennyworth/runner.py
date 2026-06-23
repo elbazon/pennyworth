@@ -139,6 +139,35 @@ def parse_stream_event(line: str) -> dict | None:
     return None
 
 
+def result_error_text(line: str) -> str | None:
+    """A human-readable error string from a Claude ``result`` line, or ``None``.
+
+    The CLI reports a failed turn as a ``result`` event with ``is_error`` set and
+    the message carried in ``result`` (or ``error``). An overloaded provider
+    (HTTP 529) is the common cause behind a long silent stall, so name it plainly
+    and note that nothing was charged. Returns ``None`` when there is no usable
+    message. Pure and testable.
+    """
+    line = line.strip()
+    if not line:
+        return None
+    try:
+        obj = json.loads(line)
+    except (ValueError, TypeError):
+        return None
+    if not isinstance(obj, dict):
+        return None
+    text = obj.get("result") or obj.get("error") or ""
+    if not isinstance(text, str):
+        text = str(text)
+    if "529" in text or "overloaded" in text.lower():
+        return (
+            "The model service was overloaded (529). "
+            "Nothing was charged — please try again."
+        )
+    return text.strip()[:500] or None
+
+
 def build_mcp_config(pack: Pack) -> dict | None:
     """Shape a pack's *wireable* hands into the Claude ``--mcp-config`` payload.
 
@@ -326,6 +355,13 @@ def stream_events(
             continue
         event = parse_stream_event(line)
         if event is not None:
+            if event.get("kind") == "result" and event.get("error"):
+                # A failed turn carries no text in the parsed result event, so
+                # re-read the raw line for a cause and surface it as an error
+                # bubble — most often an overloaded provider behind a stall.
+                detail = result_error_text(line)
+                if detail:
+                    on_event({"kind": "error", "text": detail})
             on_event(event)
         elif line.strip() and not line.lstrip().startswith(("{", "[")):
             # A plain-text line in structured mode is almost certainly an error

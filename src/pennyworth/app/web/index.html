@@ -477,6 +477,12 @@
   .msg.alfred .body > :first-child { margin-top: 0; }
   .msg.alfred .body > :last-child { margin-bottom: 0; }
   .msg.alfred.error .body { color: #ff9b94; }
+  /* Service-status notice (silence watchdog): a dimmed bubble for "info", amber
+     for "warn", set apart from a real error or a normal reply. */
+  .msg.alfred.notice { opacity: 0.85; }
+  .msg.alfred.notice img { opacity: 0.6; }
+  .msg.alfred.notice .body { color: var(--text-dim); font-size: 13px; }
+  .msg.alfred.notice.warn .body { color: #ffd479; }
   .turnmeta { font-size: 11px; color: var(--text-dim); padding-left: 54px; }
   /* Session id — surfaced per turn so a stall can be traced to its Claude Code
      session in the logs. Click to copy (the meta row isn't text-selectable). */
@@ -2871,6 +2877,15 @@
     m.append(img, el("div", "body", text));
     (chat.turn ? chat.turn.root : chat.col).append(m);
   }
+  // An in-chat service-status notice (from the silence watchdog): a quiet bubble
+  // telling the user the provider is busy, so a stall reads as "waiting" rather
+  // than a frozen spinner. severity "warn" renders amber, anything else dimmed.
+  function addNotice(chat, text, severity) {
+    const m = el("div", "msg alfred notice" + (severity === "warn" ? " warn" : ""));
+    const img = el("img"); img.src = "logo.png";
+    m.append(img, el("div", "body", text));
+    (chat.turn ? chat.turn.root : chat.col).append(m);
+  }
   // A divider in the transcript marking terminal activity — so the conversation
   // stays honest about the gap where work happened in the terminal (the Claude
   // context carries over, but the terminal output isn't replayed as bubbles).
@@ -3077,6 +3092,7 @@
         if (chat === activeChat) renderCost();
         break;
       case "error": addError(chat, e.text); break;
+      case "status_notice": addNotice(chat, e.text, e.severity); break;
       case "turn_end": {
         const t = chat.turn;
         stopBusy(chat);   // end the loading-phrase rotation for this turn
