@@ -107,3 +107,19 @@ def test_default_base_url_and_is_claude_code():
     assert providers.is_claude_code("") is True
     assert providers.is_claude_code("openai") is False
     assert providers.default_base_url("openai").startswith("https://api.openai.com")
+
+
+def test_silence_watchdog_emits_a_status_notice(tmp_path, monkeypatch):
+    # An agent that stays silent past the info threshold before producing output
+    # should trigger an in-chat status notice from the watchdog.
+    monkeypatch.setattr(providers, "_SILENCE_INFO_S", 0)
+    monkeypatch.setattr(providers, "_SILENCE_WARN_S", 1000)
+    stub = tmp_path / "agent.sh"
+    stub.write_text("#!/bin/sh\nsleep 1\necho done\n")
+    stub.chmod(0o755)
+    monkeypatch.setenv("PENNYWORTH_AGENT", str(stub))
+
+    code, events = _collect(provider="claude-code")
+    assert code == 0
+    notices = [e for e in events if e.get("kind") == "status_notice"]
+    assert notices and notices[0]["severity"] == "info"

@@ -509,6 +509,18 @@ class Bridge:
                     chat["cost"] += cost
                     self._session_cost += cost
                 emit({"type": "stream", "kind": "result", "isError": ev.get("error")})
+            elif kind == "status_notice":
+                # Service-status notice from the silence watchdog (e.g. the
+                # provider is busy). Rendered as a dimmed in-chat bubble.
+                emit(
+                    {
+                        "type": "status_notice",
+                        "severity": ev.get("severity", "info"),
+                        "text": ev.get("text", ""),
+                    }
+                )
+            elif kind == "error":
+                emit({"type": "error", "text": ev.get("text", "")})
 
         ok = False
         try:

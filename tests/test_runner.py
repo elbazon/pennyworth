@@ -332,3 +332,39 @@ def test_stream_events_collects_structured_events(tmp_path, monkeypatch):
     assert events[2]["name"] == "Read"
     assert events[3]["text"] == "Done, sir."
     assert events[4]["cost"] == 0.05
+
+
+def test_result_error_text_names_an_overload():
+    line = '{"type":"result","is_error":true,"result":"API Error: 529 Overloaded"}'
+    msg = runner.result_error_text(line)
+    assert msg is not None
+    assert "529" in msg and "charged" in msg
+
+
+def test_result_error_text_passes_through_other_errors():
+    line = '{"type":"result","is_error":true,"error":"disk full"}'
+    assert runner.result_error_text(line) == "disk full"
+
+
+def test_result_error_text_is_none_without_a_message():
+    assert runner.result_error_text("not json") is None
+    assert runner.result_error_text('{"type":"result","is_error":true}') is None
+
+
+def test_stream_events_surfaces_an_overloaded_result(tmp_path, monkeypatch):
+    # The agent prints a 529 result, then exits. The runner should surface a
+    # clear error event alongside the (errored) result event.
+    # The runner only parses structured stream-json when the agent is the
+    # bundled "claude" CLI, so the stub must carry that name.
+    stub = tmp_path / "claude"
+    stub.write_text(
+        "#!/bin/sh\n"
+        'echo \'{"type":"result","is_error":true,"result":"529 Overloaded"}\'\n'
+    )
+    stub.chmod(0o755)
+    monkeypatch.setenv("PENNYWORTH_AGENT", str(stub))
+
+    events = []
+    runner.stream_events("hi", on_event=events.append)
+    errors = [e for e in events if e.get("kind") == "error"]
+    assert errors and "529" in errors[0]["text"]

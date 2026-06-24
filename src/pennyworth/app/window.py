@@ -57,6 +57,101 @@ def portrait_path() -> Path:
     return _web_dir() / "logo.png"
 
 
+# macOS Big Sur icon-grid geometry. On a 1024px canvas the visible art is a
+# rounded square of ~824px (so ~100px transparent margin per side) with a
+# corner radius of ~185px. Expressed as ratios so any canvas size works:
+# content fills 80.5% of the canvas, corner radius is 22.5% of the content.
+# These are what make every other Dock tile a padded squircle rather than a
+# full-bleed square — which is exactly what our raw photo was missing.
+_ICON_CONTENT_RATIO = 0.805
+_ICON_RADIUS_RATIO = 0.225
+
+
+def _templated_icon_image(src_path: Path, canvas: int = 1024):
+    """Render the source art into the macOS icon template and return an NSImage.
+
+    The raw ``logo.png`` is a full-bleed square photo, so both the built
+    ``.icns`` and the live Dock tile (``setApplicationIconImage_``) showed a
+    square that clashed with every neighbouring squircle. This centres the art
+    in the Apple icon grid: a rounded square occupying ``_ICON_CONTENT_RATIO``
+    of the canvas with transparent padding around it, clipped to a corner
+    radius of ``_ICON_RADIUS_RATIO`` of that content. Returns ``None`` if
+    PyObjC/AppKit or the source is unavailable — callers fall back gracefully
+    (cosmetics only, never block launch).
+    """
+    try:
+        from AppKit import (
+            NSBezierPath,
+            NSCompositingOperationSourceOver,
+            NSImage,
+            NSMakeRect,
+            NSMakeSize,
+            NSZeroRect,
+        )
+    except Exception:
+        return None
+
+    # The drawing calls below are PyObjC bridges to AppKit; in unusual
+    # environments (headless build machines, a malformed graphics context)
+    # they can raise rather than fail silently. Guard the whole render so a
+    # draw failure honours the documented contract — return None and let the
+    # caller fall back to the raw PNG — instead of crashing the bundle build.
+    # The inner finally still guarantees unlockFocus once lockFocus succeeded.
+    try:
+        src = NSImage.alloc().initWithContentsOfFile_(str(src_path))
+        if src is None:
+            return None
+
+        out = NSImage.alloc().initWithSize_(NSMakeSize(canvas, canvas))
+        out.lockFocus()
+        try:
+            content = canvas * _ICON_CONTENT_RATIO
+            origin = (canvas - content) / 2.0
+            rect = NSMakeRect(origin, origin, content, content)
+            radius = content * _ICON_RADIUS_RATIO
+            NSBezierPath.bezierPathWithRoundedRect_xRadius_yRadius_(
+                rect, radius, radius
+            ).addClip()
+            src.drawInRect_fromRect_operation_fraction_(
+                rect, NSZeroRect, NSCompositingOperationSourceOver, 1.0
+            )
+        finally:
+            out.unlockFocus()
+        return out
+    except Exception:
+        return None
+
+
+def _write_templated_icon_png(
+    src_path: Path, out_path: Path, canvas: int = 1024
+) -> bool:
+    """Write a templated (squircle + padding) PNG of the source art to disk.
+
+    Used at bundle-build time so ``sips``/``iconutil`` resize an already-masked
+    image into the ``.icns`` — keeping the resting Dock tile and Spotlight icon
+    consistent with the live one. Returns ``True`` on success, ``False`` if
+    AppKit is unavailable (caller falls back to the raw PNG).
+    """
+    img = _templated_icon_image(src_path, canvas)
+    if img is None:
+        return False
+    try:
+        from AppKit import NSBitmapImageRep
+
+        tiff = img.TIFFRepresentation()
+        if tiff is None:
+            return False
+        rep = NSBitmapImageRep.imageRepWithData_(tiff)
+        # NSBitmapImageFileTypePNG == 4 (literal so a PyObjC build lacking the
+        # named constant can't break the build).
+        png = rep.representationUsingType_properties_(4, {})
+        if png is None:
+            return False
+        return bool(png.writeToFile_atomically_(str(out_path), True))
+    except Exception:
+        return False
+
+
 def index_url() -> str:
     """The ``file://``-style URL for the page, with an mtime cache-bust.
 
@@ -131,7 +226,12 @@ def _adopt_identity_post_launch() -> None:
             from Foundation import NSProcessInfo
 
             app = NSApplication.sharedApplication()
-            icon = NSImage.alloc().initWithContentsOfFile_(str(portrait_path()))
+            # Mask into the macOS squircle template so the *running* tile
+            # matches the resting .icns and every neighbour; fall back to the
+            # raw square if templating is unavailable.
+            icon = _templated_icon_image(portrait_path()) or (
+                NSImage.alloc().initWithContentsOfFile_(str(portrait_path()))
+            )
             if icon:
                 app.setApplicationIconImage_(icon)
             NSProcessInfo.processInfo().setProcessName_("Pennyworth")
