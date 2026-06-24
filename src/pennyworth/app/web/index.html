@@ -2230,8 +2230,18 @@
     // Unsaved live chats (have content, not yet persisted) sit on top, newest first.
     for (const [id, c] of chats) {
       if (storedIds.has(id)) continue;
-      if (!c.messages.length && c.title === "New chat") continue;
-      rows.push({ id, title: c.title, running: c.running, unread: c.unread,
+      const draft = (c.draft || "").trim();
+      // Hide a pristine "New chat" (no messages, no unsent draft). But KEEP one
+      // that holds an unsent draft reachable: the composer is one widget while
+      // each chat owns its own draft, so glancing at another chat and back must
+      // not orphan the text. Without a row, the only way "back" is the New-chat
+      // button — which spawns a fresh empty chat and the draft looks lost.
+      const pristine = !c.messages.length && c.title === "New chat";
+      if (pristine && !draft) continue;
+      const title = (pristine && draft)
+        ? "✎ " + draft.replace(/\s+/g, " ").slice(0, 40) + (draft.length > 40 ? "…" : "")
+        : c.title;
+      rows.push({ id, title, running: c.running, unread: c.unread,
                   cost: c.cost, age: "", turns: 0, pinned: false });
     }
     rows.reverse();  // Map iterates oldest-first; show newest unsaved on top
@@ -4269,7 +4279,10 @@
     await api().start_dictation();
   });
   document.addEventListener("keydown", (ev) => {
-    if ((ev.metaKey || ev.ctrlKey) && ev.key.toLowerCase() === "n") {
+    if ((ev.metaKey || ev.ctrlKey)
+        && (ev.key.toLowerCase() === "n" || ev.key.toLowerCase() === "t")) {
+      // ⌘N and ⌘T both open a fresh chat (⌘T mirrors the browser/terminal
+      // "new tab" reflex).
       ev.preventDefault(); createChat();
     } else if ((ev.metaKey || ev.ctrlKey) && ev.key.toLowerCase() === "f") {
       // ⌘F focuses the chat search box (matches its placeholder hint).
