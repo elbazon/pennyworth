@@ -8,7 +8,7 @@
 > reviews code, navigates architecture, runs your terminal, and learns your domain —
 > in the unflappable voice of a proper manservant.
 
-![Pennyworth — the open-source desktop app](docs/images/app-overview.png)
+![Pennyworth — the open-source desktop app](https://raw.githubusercontent.com/elbazon/pennyworth/master/docs/images/app-overview.png)
 
 **Pennyworth** is the open-source project, the Python package, and the assistant you
 talk to. His full name is Alfred Pennyworth, the gentleman's butler — but he goes by
