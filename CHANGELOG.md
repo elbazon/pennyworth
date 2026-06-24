@@ -4,6 +4,34 @@ All notable changes to Pennyworth are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/), and the project aims for
 [Semantic Versioning](https://semver.org/).
 
+## [0.1.1]
+
+A maintenance release porting desktop-app fixes from local development and
+sharpening behaviour when the model provider is slow.
+
+### Added
+
+- **Silence watchdog** — when the backend goes quiet during a provider stall
+  (e.g. an HTTP 529 backoff), Pennyworth now emits `status_notice` events so a
+  busy service reads as a calm, visible status rather than a frozen spinner. It
+  wraps every backend, so the behaviour is identical whichever model answers.
+
+### Changed
+
+- **Result errors surface as notices** — the runner now turns a backend result
+  error into a clear status notice instead of a silent stall.
+- **Templated macOS app icon** — the desktop app renders its icon from a
+  template image for a crisper dock/menubar presence.
+
+### Fixed
+
+- Ported assorted desktop-app fixes (bridge, bundle, window, web UI) from local
+  development (#2).
+
+### Docs
+
+- Credited the Morning R&D team as contributors and trimmed the credits.
+
 ## [0.1.0] — first public release
 
 The first open-source release of Pennyworth — a dignified, platform-agnostic
@@ -40,4 +68,5 @@ butler-engineer AI companion, modeled on Alfred Pennyworth.
 - macOS desktop app (pywebview/WebKit); the CLI is cross-platform.
 - Drives the Claude Code CLI by default (`PENNYWORTH_AGENT` to change it).
 
+[0.1.1]: https://github.com/elbazon/pennyworth/releases/tag/v0.1.1
 [0.1.0]: https://github.com/elbazon/pennyworth/releases/tag/v0.1.0
