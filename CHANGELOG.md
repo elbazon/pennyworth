@@ -4,6 +4,18 @@ All notable changes to Pennyworth are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/), and the project aims for
 [Semantic Versioning](https://semver.org/).
 
+## [0.1.2]
+
+A patch release fixing the version reported by the desktop app's About panel.
+
+### Fixed
+
+- **About panel showed the wrong version** — the bridge imported `__version__`
+  from a non-existent `pennyworth.version` module, silently fell back to a
+  hardcoded `"0.1.0"`, and so reported `0.1.0` to every user regardless of the
+  installed version. It now reads `__version__` from the package, the same way
+  the CLI does, so the displayed version tracks the real one.
+
 ## [0.1.1]
 
 A maintenance release porting desktop-app fixes from local development and

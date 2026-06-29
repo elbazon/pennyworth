@@ -24,16 +24,12 @@ import webbrowser
 from collections.abc import Callable
 from pathlib import Path
 
+from pennyworth import __version__ as _VERSION
 from pennyworth import packs as _packs
 from pennyworth import profile as _profile
 from pennyworth.app.terminal import TermManager
 from pennyworth.pack import Pack
 from pennyworth.profile import Profile
-
-try:
-    from pennyworth.version import __version__ as _VERSION
-except Exception:  # version module shape is not guaranteed
-    _VERSION = "0.1.0"
 
 # --- vocabularies the picker UIs validate against --------------------------
 
